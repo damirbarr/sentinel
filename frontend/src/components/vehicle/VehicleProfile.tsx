@@ -5,10 +5,10 @@ import CommandPanel from './CommandPanel'
 import type { DecisionState } from '../../types'
 
 const DECISION_COLOR: Record<DecisionState, string> = {
-  NORMAL: 'text-cyan-400 border-cyan-400/30 bg-cyan-400/5',
-  DEGRADED_SPEED: 'text-amber-400 border-amber-400/30 bg-amber-400/5',
-  SAFE_STOP_RECOMMENDED: 'text-red-400 border-red-400/30 bg-red-400/5',
-  REROUTE_RECOMMENDED: 'text-orange-400 border-orange-400/30 bg-orange-400/5',
+  NORMAL: 'text-cyan-300 border-cyan-400/50 bg-cyan-400/15',
+  DEGRADED_SPEED: 'text-amber-200 border-amber-400/50 bg-amber-400/15',
+  SAFE_STOP_RECOMMENDED: 'text-red-200 border-red-400/60 bg-red-400/20',
+  REROUTE_RECOMMENDED: 'text-orange-200 border-orange-400/50 bg-orange-400/15',
 }
 
 const REASON_META: Record<string, { label: string; color: string }> = {
@@ -58,7 +58,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
     <div className="flex flex-col gap-4 p-4 select-none" style={{ userSelect: 'none' }}>
       {/* Brain visualization */}
       <div className="flex flex-col items-center pt-2" style={{ userSelect: 'none' }}>
-        <p className="text-[10px] font-semibold tracking-[0.2em] text-slate-500 uppercase mb-3">
+        <p className="text-[11px] font-bold tracking-[0.25em] text-slate-200 uppercase mb-3">
           Sentinel Cognition
         </p>
         <BrainCanvas
@@ -67,12 +67,11 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
           speedKmh={vehicle.speedKmh}
           activeConstraints={activeConstraints}
         />
-      </div>
-
-      {/* Decision state card */}
-      <div className={`rounded-xl border p-3 ${DECISION_COLOR[vehicle.decision]}`} style={{ userSelect: 'none' }}>
-        <p className="text-[10px] font-semibold uppercase tracking-widest opacity-60 mb-1">Current Decision</p>
-        <p className="font-mono font-bold text-sm">{vehicle.decision.replace(/_/g, ' ')}</p>
+        {/* Decision label below canvas — replaces removed Html overlay */}
+        <div className={`mt-2 w-full rounded-xl border p-3 ${DECISION_COLOR[vehicle.decision]}`}>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-current opacity-70 mb-1">Decision State</p>
+          <p className="font-mono font-bold text-base">{vehicle.decision.replace(/_/g, ' ')}</p>
+        </div>
       </div>
 
       {/* Telemetry grid */}
@@ -84,8 +83,8 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
           { label: 'Longitude', value: vehicle.position.lng.toFixed(5) },
         ].map(({ label, value }) => (
           <div key={label} className="p-2.5 rounded-lg bg-surface-2 border border-surface-border">
-            <p className="text-[10px] text-slate-500 mb-0.5">{label}</p>
-            <p className="text-xs font-mono font-semibold text-white">{value}</p>
+            <p className="text-[10px] text-slate-400 mb-0.5">{label}</p>
+            <p className="text-xs font-mono font-bold text-slate-100">{value}</p>
           </div>
         ))}
       </div>
@@ -93,7 +92,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
       {/* Active signals */}
       {vehicle.reasonCodes.length > 0 && (
         <div style={{ userSelect: 'none' }}>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Active Signals</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-300 mb-2">Active Signals</p>
           <div className="flex flex-wrap gap-1.5">
             {vehicle.reasonCodes.map((code) => {
               const meta = REASON_META[code] ?? { label: code, color: 'text-slate-400 bg-slate-400/10 border-slate-400/20' }
@@ -117,7 +116,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
       {/* Affecting constraints */}
       {activeConstraints.length > 0 && (
         <div style={{ userSelect: 'none' }}>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Constraint Feed</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-300 mb-2">Constraint Feed</p>
           <div className="space-y-1.5">
             {activeConstraints.map((event) => (
               <div key={event.id} className="flex items-center gap-2 p-2 rounded-lg bg-surface-2 border border-surface-border">
@@ -126,7 +125,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
                   event.type === 'GEOFENCE' ? 'bg-red-400/20 text-red-400' :
                   'bg-orange-400/20 text-orange-400'
                 }`}>{event.type}</span>
-                <span className="text-[10px] font-mono text-slate-400 truncate">{event.id.slice(0, 12)}…</span>
+                <span className="text-[10px] font-mono text-slate-300 truncate">{event.id.slice(0, 12)}…</span>
               </div>
             ))}
           </div>
@@ -137,7 +136,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
         <CommandPanel vehicleId={vehicleId} />
       </div>
 
-      <p className="text-[10px] text-slate-600 text-center">
+      <p className="text-[10px] text-slate-500 text-center">
         Updated {new Date(vehicle.lastSeenAt).toLocaleTimeString()}
       </p>
     </div>

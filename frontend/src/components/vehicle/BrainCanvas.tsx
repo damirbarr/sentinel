@@ -1,6 +1,6 @@
 import { useRef, useMemo } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Sphere, Html, Line, Points, PointMaterial } from '@react-three/drei'
+import { OrbitControls, Sphere, Line, Points, PointMaterial } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { ActiveEvent, DecisionState, ReasonCode, WeatherPayload, GeofencePayload, NetworkPayload } from '../../types'
@@ -56,12 +56,10 @@ function getConstraintSummary(event: ActiveEvent): string {
 
 interface DecisionCoreProps {
   decisionColor: string
-  decision: DecisionState
-  speedKmh: number
   activeConstraintsCount: number
 }
 
-function DecisionCore({ decisionColor, decision, speedKmh, activeConstraintsCount }: DecisionCoreProps) {
+function DecisionCore({ decisionColor, activeConstraintsCount }: DecisionCoreProps) {
   const innerRef = useRef<THREE.Mesh>(null)
   const color = useMemo(() => new THREE.Color(decisionColor), [decisionColor])
 
@@ -98,25 +96,6 @@ function DecisionCore({ decisionColor, decision, speedKmh, activeConstraintsCoun
 
       {/* Core glow */}
       <pointLight color={decisionColor} intensity={1.5} distance={3} />
-
-      {/* HTML label */}
-      <Html center distanceFactor={8}>
-        <div style={{ userSelect: 'none', textAlign: 'center', pointerEvents: 'none' }}>
-          <div style={{
-            color: decisionColor,
-            fontFamily: 'monospace',
-            fontSize: '11px',
-            fontWeight: 'bold',
-            letterSpacing: '0.1em',
-            textShadow: `0 0 8px ${decisionColor}`,
-          }}>
-            {DECISION_SHORT[decision] ?? decision}
-          </div>
-          <div style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: '8px' }}>
-            {speedKmh.toFixed(0)} km/h
-          </div>
-        </div>
-      </Html>
     </group>
   )
 }
@@ -154,37 +133,6 @@ function ConstraintNode({ constraint, index, total }: ConstraintNodeProps) {
         opacity={0.6}
       />
 
-      {/* HTML label */}
-      <Html position={nodePos} center distanceFactor={8}>
-        <div style={{
-          userSelect: 'none',
-          pointerEvents: 'none',
-          background: 'rgba(6,8,15,0.85)',
-          border: `1px solid ${typeColor}40`,
-          borderRadius: '6px',
-          padding: '4px 8px',
-          maxWidth: '120px',
-          backdropFilter: 'blur(4px)',
-        }}>
-          <div style={{
-            color: typeColor,
-            fontFamily: 'monospace',
-            fontSize: '9px',
-            fontWeight: 'bold',
-            marginBottom: '2px',
-          }}>
-            {constraint.type}
-          </div>
-          <div style={{
-            color: '#cbd5e1',
-            fontFamily: 'monospace',
-            fontSize: '8px',
-            lineHeight: '1.3',
-          }}>
-            {getConstraintSummary(constraint)}
-          </div>
-        </div>
-      </Html>
     </group>
   )
 }
@@ -233,11 +181,10 @@ function IdleParticleCloud() {
 
 interface SceneProps {
   decision: DecisionState
-  speedKmh: number
   activeConstraints: ActiveEvent[]
 }
 
-function Scene({ decision, speedKmh, activeConstraints }: SceneProps) {
+function Scene({ decision, activeConstraints }: SceneProps) {
   const decisionColor = DECISION_COLOR[decision] ?? '#22d3ee'
 
   return (
@@ -248,8 +195,6 @@ function Scene({ decision, speedKmh, activeConstraints }: SceneProps) {
 
       <DecisionCore
         decisionColor={decisionColor}
-        decision={decision}
-        speedKmh={speedKmh}
         activeConstraintsCount={activeConstraints.length}
       />
 
@@ -292,7 +237,6 @@ export default function BrainCanvas({ decision, speedKmh, activeConstraints }: B
       <OrbitControls autoRotate autoRotateSpeed={0.4} enableZoom={false} enablePan={false} />
       <Scene
         decision={decision}
-        speedKmh={speedKmh}
         activeConstraints={activeConstraints}
       />
     </Canvas>
