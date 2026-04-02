@@ -71,7 +71,7 @@ export default function ActiveConstraints() {
         return (
           <div
             key={event.id}
-            className={`relative flex items-start gap-3 p-3 rounded-xl bg-surface-2 border border-surface-border hover:border-surface-border-bright hover:bg-surface-3 transition-all group overflow-hidden${flyTarget ? ' cursor-pointer' : ''}`}
+            className={`relative flex items-start gap-3 p-3 rounded-md bg-surface-2 border border-surface-border hover:border-surface-border-bright hover:bg-surface-3 transition-all group overflow-hidden${flyTarget ? ' cursor-pointer' : ''}`}
             onMouseEnter={() => setHighlightedConstraintId(event.id)}
             onMouseLeave={() => setHighlightedConstraintId(null)}
             onClick={() => { if (flyTarget) setMapFlyTarget(flyTarget) }}

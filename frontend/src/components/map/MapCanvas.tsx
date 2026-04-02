@@ -10,7 +10,7 @@ import { useUIStore } from '../../store/ui.store'
 const DEFAULT_CENTER: [number, number] = [37.7749, -122.4194]
 
 function WeatherPlacementClickHandler() {
-  const { isPlacingWeather, setPendingWeatherCenter, setPlacingWeather, weatherHoverCenter, pendingWeatherRadius, setWeatherHoverCenter } = useUIStore()
+  const { isPlacingWeather, setPendingWeatherCenter, setPlacingWeather, weatherHoverCenter, pendingWeatherRadius, pendingWeatherCenter, setWeatherHoverCenter } = useUIStore()
   useMapEvents({
     mousemove(e) {
       if (isPlacingWeather) {
@@ -28,21 +28,39 @@ function WeatherPlacementClickHandler() {
       }
     },
   })
-  return weatherHoverCenter ? (
-    <Circle
-      center={[weatherHoverCenter.lat, weatherHoverCenter.lng]}
-      radius={pendingWeatherRadius}
-      pathOptions={{
-        color: '#fbbf24',
-        fillColor: '#fbbf24',
-        fillOpacity: 0.08,
-        weight: 1,
-        dashArray: '4 6',
-        opacity: 0.6,
-      }}
-      interactive={false}
-    />
-  ) : null
+  return (
+    <>
+      {weatherHoverCenter && (
+        <Circle
+          center={[weatherHoverCenter.lat, weatherHoverCenter.lng]}
+          radius={pendingWeatherRadius}
+          pathOptions={{
+            color: '#fbbf24',
+            fillColor: '#fbbf24',
+            fillOpacity: 0.08,
+            weight: 1,
+            dashArray: '4 6',
+            opacity: 0.6,
+          }}
+          interactive={false}
+        />
+      )}
+      {pendingWeatherCenter && (
+        <Circle
+          center={[pendingWeatherCenter.lat, pendingWeatherCenter.lng]}
+          radius={pendingWeatherRadius}
+          pathOptions={{
+            color: '#fbbf24',
+            fillColor: '#fbbf24',
+            fillOpacity: 0.12,
+            weight: 2,
+            dashArray: '4 6',
+          }}
+          interactive={false}
+        />
+      )}
+    </>
+  )
 }
 
 function FlyToHandler() {

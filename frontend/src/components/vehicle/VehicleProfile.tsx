@@ -84,7 +84,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
         <div className="overflow-y-auto scrollbar-thin bg-surface border-t border-surface-border max-h-[40vh]">
           <div className="flex flex-col gap-3 p-4">
             {/* Decision state */}
-            <div className={`rounded-xl border p-3 ${DECISION_COLOR[vehicle.decision]}`}>
+            <div className={`rounded-md border p-3 ${DECISION_COLOR[vehicle.decision]}`}>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-current opacity-70 mb-1">Decision State</p>
               <p className="font-mono font-bold text-base">{vehicle.decision.replace(/_/g, ' ')}</p>
             </div>
@@ -176,7 +176,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
           speedKmh={vehicle.speedKmh}
           activeConstraints={activeConstraints}
         />
-        <div className={`mt-2 w-full rounded-xl border p-3 ${DECISION_COLOR[vehicle.decision]}`}>
+        <div className={`mt-2 w-full rounded-md border p-3 ${DECISION_COLOR[vehicle.decision]}`}>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-current opacity-70 mb-1">Decision State</p>
           <p className="font-mono font-bold text-base">{vehicle.decision.replace(/_/g, ' ')}</p>
         </div>

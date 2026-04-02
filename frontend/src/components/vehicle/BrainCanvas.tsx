@@ -264,11 +264,11 @@ export default function BrainCanvas({ decision, speedKmh, activeConstraints, ful
         />
       </Canvas>
 
-      {/* Reset view button — top-right */}
+      {/* Reset view button — top-right (top-left in fullscreen to avoid EXIT overlap) */}
       <button
         onClick={() => { (orbitRef.current as any)?.reset() }}
         style={{
-          position: 'absolute', top: 8, right: 8, zIndex: 10,
+          position: 'absolute', top: 8, ...(fullscreen ? { left: 8 } : { right: 8 }), zIndex: 10,
           background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
           color: '#64748b', fontFamily: 'monospace', fontSize: '9px',

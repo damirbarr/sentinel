@@ -2,7 +2,7 @@ export default function EmptyState({ icon, title, description }: { icon?: React.
   return (
     <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
       {icon && (
-        <div className="w-10 h-10 rounded-xl bg-surface-2 border border-surface-border flex items-center justify-center mb-3 text-slate-500">
+        <div className="w-10 h-10 rounded-md bg-surface-2 border border-surface-border flex items-center justify-center mb-3 text-slate-500">
           {icon}
         </div>
       )}

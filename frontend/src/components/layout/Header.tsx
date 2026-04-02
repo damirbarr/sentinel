@@ -15,7 +15,7 @@ export default function Header() {
   }, [])
 
   return (
-    <header className="h-14 shrink-0 flex items-center justify-between px-5 bg-surface-1 border-b border-surface-border z-20 relative overflow-hidden">
+    <header className="h-14 shrink-0 flex items-center justify-between px-5 bg-surface-1 border-b border-surface-border z-20 relative overflow-hidden select-none" style={{ userSelect: 'none' }}>
       {/* 1px top accent gradient stripe */}
       <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-accent-violet via-accent-cyan to-accent-violet" />
       {/* Radial depth on the right */}

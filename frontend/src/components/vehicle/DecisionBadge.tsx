@@ -50,9 +50,9 @@ const CFG: Record<DecisionState, {
 export default function DecisionBadge({ decision }: { decision: DecisionState }) {
   const c = CFG[decision]
   return (
-    <div className={`w-full flex flex-col items-center gap-3 py-6 px-5 rounded-2xl ${c.innerBg} ${c.outerGlow} ${c.pulse ? 'animate-pulse' : ''} text-center relative overflow-hidden`}>
+    <div className={`w-full flex flex-col items-center gap-3 py-6 px-5 rounded-lg ${c.innerBg} ${c.outerGlow} ${c.pulse ? 'animate-pulse' : ''} text-center relative overflow-hidden`}>
       {/* Subtle inner radial glow */}
-      <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
       <span className={`text-4xl ${c.textColor} relative z-10`}>{c.icon}</span>
       <span className={`text-2xl font-extrabold tracking-wide ${c.textColor} relative z-10`}>{c.label}</span>
       <span className="text-xs text-slate-400 relative z-10">{c.sub}</span>
