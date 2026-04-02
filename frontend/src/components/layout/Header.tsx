@@ -1,10 +1,12 @@
 import { useVehiclesStore } from '../../store/vehicles.store'
+import { useUIStore } from '../../store/ui.store'
 import { useState, useEffect } from 'react'
 
 export default function Header() {
   const vehicles = useVehiclesStore((s) => s.vehicles)
   const all = Object.values(vehicles)
   const connected = all.filter((v) => v.connected).length
+  const toggleSettings = useUIStore((s) => s.toggleSettings)
 
   const [utc, setUtc] = useState(() => new Date().toUTCString().slice(17, 25))
   useEffect(() => {
@@ -48,6 +50,19 @@ export default function Header() {
           </span>
           <span className="text-xs font-bold tracking-widest text-accent-green">LIVE</span>
         </div>
+        {/* Settings gear button */}
+        <button
+          onClick={toggleSettings}
+          className="flex items-center justify-center w-8 h-8 rounded-lg bg-surface-2 border border-surface-border hover:border-surface-border-bright hover:bg-surface-3 transition-colors text-slate-400 hover:text-slate-200"
+          title="Settings"
+        >
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+            <path fillRule="evenodd" clipRule="evenodd"
+              d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+              fill="currentColor"
+            />
+          </svg>
+        </button>
       </div>
     </header>
   )

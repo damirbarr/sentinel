@@ -1,5 +1,6 @@
 import { api } from '../../api/http'
 import { useEventsStore } from '../../store/events.store'
+import { useUIStore } from '../../store/ui.store'
 import Badge from '../ui/Badge'
 import EmptyState from '../ui/EmptyState'
 import type { ActiveEvent, GeofencePayload, NetworkPayload, WeatherPayload } from '../../types'
@@ -27,9 +28,26 @@ function summary(event: ActiveEvent): { label: string; detail: string; color: 'r
   return { label: `Network: ${p.severity}`, detail: p.vehicleId ? `Vehicle: ${p.vehicleId}` : 'Global', color, accentBar }
 }
 
+function getFlyTarget(event: ActiveEvent): { lat: number; lng: number; zoom?: number } | null {
+  if (event.type === 'WEATHER') {
+    const p = event.payload as WeatherPayload
+    if (p.center) return { lat: p.center.lat, lng: p.center.lng, zoom: 14 }
+    return null
+  }
+  if (event.type === 'GEOFENCE') {
+    const p = event.payload as GeofencePayload
+    if (p.polygon.length === 0) return null
+    const lat = p.polygon.reduce((sum, pt) => sum + pt.lat, 0) / p.polygon.length
+    const lng = p.polygon.reduce((sum, pt) => sum + pt.lng, 0) / p.polygon.length
+    return { lat, lng, zoom: 14 }
+  }
+  return null
+}
+
 export default function ActiveConstraints() {
   const events = useEventsStore((s) => s.events)
   const active = Object.values(events).filter((e) => e.active)
+  const { setHighlightedConstraintId, setMapFlyTarget } = useUIStore()
 
   if (active.length === 0) {
     return (
@@ -49,10 +67,14 @@ export default function ActiveConstraints() {
       </p>
       {active.map((event) => {
         const { label, detail, color, accentBar } = summary(event)
+        const flyTarget = getFlyTarget(event)
         return (
           <div
             key={event.id}
-            className="relative flex items-start gap-3 p-3 rounded-xl bg-surface-2 border border-surface-border hover:border-surface-border-bright hover:bg-surface-3 transition-all group overflow-hidden"
+            className={`relative flex items-start gap-3 p-3 rounded-xl bg-surface-2 border border-surface-border hover:border-surface-border-bright hover:bg-surface-3 transition-all group overflow-hidden${flyTarget ? ' cursor-pointer' : ''}`}
+            onMouseEnter={() => setHighlightedConstraintId(event.id)}
+            onMouseLeave={() => setHighlightedConstraintId(null)}
+            onClick={() => { if (flyTarget) setMapFlyTarget(flyTarget) }}
           >
             {/* Left colored accent bar */}
             <div className={`absolute left-0 top-0 bottom-0 w-0.5 rounded-l-xl ${accentBar}`} />
@@ -64,7 +86,7 @@ export default function ActiveConstraints() {
               <p className="text-xs text-slate-500 mt-0.5 font-mono">{detail}</p>
             </div>
             <button
-              onClick={() => api.clearEvent(event.id)}
+              onClick={(e) => { e.stopPropagation(); api.clearEvent(event.id) }}
               className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center w-5 h-5 rounded bg-accent-red/10 hover:bg-accent-red/20 border border-accent-red/20"
               title="Clear constraint"
             >

@@ -3,6 +3,7 @@ import MapCanvas from '../map/MapCanvas'
 import ControlPanel from '../control/ControlPanel'
 import VehiclePanel from '../vehicle/VehiclePanel'
 import EventTimeline from '../timeline/EventTimeline'
+import SettingsModal from '../settings/SettingsModal'
 import { useUIStore } from '../../store/ui.store'
 
 export default function AppShell() {
@@ -37,6 +38,7 @@ export default function AppShell() {
           <EventTimeline />
         </div>
       )}
+      <SettingsModal />
     </div>
   )
 }

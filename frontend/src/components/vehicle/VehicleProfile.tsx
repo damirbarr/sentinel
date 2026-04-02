@@ -101,21 +101,6 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
         </div>
       </div>
 
-      {/* Telemetry grid */}
-      <div className={`grid grid-cols-2 gap-2${fullscreen ? ' px-4' : ''}`} style={{ userSelect: 'none' }}>
-        {[
-          { label: 'Speed', value: `${vehicle.speedKmh.toFixed(0)} km/h` },
-          { label: 'Heading', value: `${vehicle.position.heading.toFixed(0)}°` },
-          { label: 'Latitude', value: vehicle.position.lat.toFixed(5) },
-          { label: 'Longitude', value: vehicle.position.lng.toFixed(5) },
-        ].map(({ label, value }) => (
-          <div key={label} className="p-2.5 rounded-lg bg-surface-2 border border-surface-border">
-            <p className="text-[10px] text-slate-400 mb-0.5">{label}</p>
-            <p className="text-xs font-mono font-bold text-slate-100">{value}</p>
-          </div>
-        ))}
-      </div>
-
       {/* Active signals */}
       {vehicle.reasonCodes.length > 0 && (
         <div className={fullscreen ? 'px-4' : ''} style={{ userSelect: 'none' }}>
@@ -158,6 +143,21 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
           </div>
         </div>
       )}
+
+      {/* Telemetry grid */}
+      <div className={`grid grid-cols-2 gap-2${fullscreen ? ' px-4' : ''}`} style={{ userSelect: 'none' }}>
+        {[
+          { label: 'Speed', value: `${vehicle.speedKmh.toFixed(0)} km/h` },
+          { label: 'Heading', value: `${vehicle.position.heading.toFixed(0)}°` },
+          { label: 'Latitude', value: vehicle.position.lat.toFixed(5) },
+          { label: 'Longitude', value: vehicle.position.lng.toFixed(5) },
+        ].map(({ label, value }) => (
+          <div key={label} className="p-2.5 rounded-lg bg-surface-2 border border-surface-border">
+            <p className="text-[10px] text-slate-400 mb-0.5">{label}</p>
+            <p className="text-xs font-mono font-bold text-slate-100">{value}</p>
+          </div>
+        ))}
+      </div>
 
       <p className={`text-[10px] text-slate-500 text-center${fullscreen ? ' pb-4' : ''}`}>
         Updated {new Date(vehicle.lastSeenAt).toLocaleTimeString()}

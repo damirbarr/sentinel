@@ -10,6 +10,12 @@ interface UIState {
   pendingWeatherCenter: LatLng | null
   pendingWeatherRadius: number
   weatherHoverCenter: LatLng | null
+  highlightedConstraintId: string | null
+  mapFlyTarget: { lat: number; lng: number; zoom?: number } | null
+  settingsOpen: boolean
+  settingMaxConstraintDistance: number
+  settingSpeedDegradationPct: number
+  settingAutoRotateBrain: boolean
   setSelectedVehicle: (id: string | null) => void
   setTimelineOpen: (open: boolean) => void
   setDrawingGeofence: (drawing: boolean) => void
@@ -18,6 +24,12 @@ interface UIState {
   setPendingWeatherCenter: (center: LatLng | null) => void
   setPendingWeatherRadius: (radius: number) => void
   setWeatherHoverCenter: (center: LatLng | null) => void
+  setHighlightedConstraintId: (id: string | null) => void
+  setMapFlyTarget: (target: { lat: number; lng: number; zoom?: number } | null) => void
+  toggleSettings: () => void
+  setSettingMaxConstraintDistance: (v: number) => void
+  setSettingSpeedDegradationPct: (v: number) => void
+  setSettingAutoRotateBrain: (v: boolean) => void
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -29,6 +41,12 @@ export const useUIStore = create<UIState>((set) => ({
   pendingWeatherCenter: null,
   pendingWeatherRadius: 2000,
   weatherHoverCenter: null,
+  highlightedConstraintId: null,
+  mapFlyTarget: null,
+  settingsOpen: false,
+  settingMaxConstraintDistance: 0,
+  settingSpeedDegradationPct: 25,
+  settingAutoRotateBrain: true,
   setSelectedVehicle: (id) => set({ selectedVehicleId: id }),
   setTimelineOpen: (open) => set({ timelineOpen: open }),
   setDrawingGeofence: (drawing) => set({ isDrawingGeofence: drawing }),
@@ -37,4 +55,10 @@ export const useUIStore = create<UIState>((set) => ({
   setPendingWeatherCenter: (center) => set({ pendingWeatherCenter: center }),
   setPendingWeatherRadius: (radius) => set({ pendingWeatherRadius: radius }),
   setWeatherHoverCenter: (center) => set({ weatherHoverCenter: center }),
+  setHighlightedConstraintId: (id) => set({ highlightedConstraintId: id }),
+  setMapFlyTarget: (target) => set({ mapFlyTarget: target }),
+  toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),
+  setSettingMaxConstraintDistance: (v) => set({ settingMaxConstraintDistance: v }),
+  setSettingSpeedDegradationPct: (v) => set({ settingSpeedDegradationPct: v }),
+  setSettingAutoRotateBrain: (v) => set({ settingAutoRotateBrain: v }),
 }))

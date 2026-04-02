@@ -28,10 +28,15 @@ export default function WeatherForm() {
           ...(pendingWeatherCenter ? { center: pendingWeatherCenter, radiusMeters: pendingWeatherRadius } : {}),
         }
       })
+      // Keep pendingWeatherCenter visible until user clicks Cancel
       setPlacingWeather(false)
-      setPendingWeatherCenter(null)
     } catch (err) { setError((err as Error).message) }
     finally { setSubmitting(false) }
+  }
+
+  function handleCancel() {
+    setPlacingWeather(false)
+    setPendingWeatherCenter(null)
   }
 
   return (
@@ -81,12 +86,18 @@ export default function WeatherForm() {
             ? `✓ Center placed (${pendingWeatherCenter.lat.toFixed(4)}, ${pendingWeatherCenter.lng.toFixed(4)})`
             : '⊕ Place on Map'}
       </button>
+      {pendingWeatherCenter && (
+        <button type="button" onClick={handleCancel}
+          className="w-full py-1.5 rounded-lg text-xs font-semibold border border-accent-red/40 bg-accent-red/10 text-accent-red hover:bg-accent-red/20 transition-colors">
+          ✕ Cancel Placement
+        </button>
+      )}
       {error && <p className="text-xs text-accent-red">{error}</p>}
       <button type="submit" disabled={submitting} className="w-full py-2.5 rounded-lg bg-accent-blue hover:bg-blue-500 text-white text-sm font-semibold transition-colors disabled:opacity-50">
         {submitting ? 'Publishing…' : 'Publish Weather Event'}
       </button>
       <p className="text-xs text-slate-500">
-        {pendingWeatherCenter ? 'Zone placed on map.' : 'Publish globally or place a zone on the map first.'}
+        {pendingWeatherCenter ? 'Zone placed on map — circle persists until Publish or Cancel.' : 'Publish globally or place a zone on the map first.'}
       </p>
     </form>
   )

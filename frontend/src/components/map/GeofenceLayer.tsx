@@ -11,7 +11,7 @@ const STYLES: Record<string, { color: string; fillColor: string; fillOpacity: nu
 
 export default function GeofenceLayer() {
   const events = useEventsStore((s) => s.events)
-  const { pendingPolygon } = useUIStore()
+  const { pendingPolygon, highlightedConstraintId } = useUIStore()
   return (
     <>
       {Object.values(events)
@@ -19,11 +19,17 @@ export default function GeofenceLayer() {
         .map((event) => {
           const p = event.payload as GeofencePayload
           const style = STYLES[p.type] ?? STYLES.CAUTION
+          const highlighted = event.id === highlightedConstraintId
           return (
             <Polygon
               key={event.id}
               positions={p.polygon.map((pt) => [pt.lat, pt.lng] as [number, number])}
-              pathOptions={{ ...style, weight: 2, dashArray: p.type === 'FORBIDDEN' ? undefined : '6 4' }}
+              pathOptions={{
+                ...style,
+                fillOpacity: highlighted ? 0.35 : style.fillOpacity,
+                weight: highlighted ? 3 : 2,
+                dashArray: p.type === 'FORBIDDEN' ? undefined : '6 4',
+              }}
             >
               <Tooltip sticky>
                 <div className="text-xs">
@@ -39,6 +45,7 @@ export default function GeofenceLayer() {
         .map((event) => {
           const p = event.payload as WeatherPayload
           if (!p.center || !p.radiusMeters) return null
+          const highlighted = event.id === highlightedConstraintId
           return (
             <Circle
               key={event.id}
@@ -47,8 +54,8 @@ export default function GeofenceLayer() {
               pathOptions={{
                 color: '#f59e0b',
                 fillColor: '#f59e0b',
-                fillOpacity: 0.08,
-                weight: 1.5,
+                fillOpacity: highlighted ? 0.35 : 0.08,
+                weight: highlighted ? 3 : 1.5,
                 dashArray: '4 6',
               }}
             >
