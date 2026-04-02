@@ -4,15 +4,15 @@ import { useUIStore } from '../../store/ui.store'
 import type { VehicleStatus } from '../../types'
 
 const DECISION_COLORS: Record<string, string> = {
-  NORMAL: '#34d399',
-  DEGRADED_SPEED: '#fbbf24',
-  SAFE_STOP_RECOMMENDED: '#f87171',
-  REROUTE_RECOMMENDED: '#fb923c',
+  NORMAL: '#4ade80',
+  DEGRADED_SPEED: '#fcd34d',
+  SAFE_STOP_RECOMMENDED: '#fc8181',
+  REROUTE_RECOMMENDED: '#fdba74',
 }
 
 function vehicleIcon(decision: string, connected: boolean, heading: number, isSelected: boolean): L.DivIcon {
-  const color = connected ? (DECISION_COLORS[decision] ?? '#38bdf8') : '#4b5563'
-  const size = isSelected ? 40 : 34
+  const color = connected ? (DECISION_COLORS[decision] ?? '#60a5fa') : '#4b5563'
+  const size = isSelected ? 48 : 40
 
   // Drop shadow / glow filter
   const filterId = `glow-${decision.toLowerCase().replace(/_/g, '-')}`

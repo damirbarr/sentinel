@@ -12,7 +12,7 @@ export default function AppShell() {
       <Header />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Left panel with vertical gradient */}
-        <div className="w-72 shrink-0 flex flex-col bg-gradient-to-b from-surface-1 to-surface border-r border-surface-border overflow-y-auto scrollbar-thin z-10">
+        <div className="w-72 shrink-0 flex flex-col bg-surface-1/95 backdrop-blur-sm border-r border-surface-border overflow-y-auto scrollbar-thin z-10 shadow-[2px_0_24px_rgba(192,132,252,0.08)]">
           <ControlPanel />
         </div>
         <div className="flex-1 relative overflow-hidden">
@@ -20,14 +20,14 @@ export default function AppShell() {
           {/* Timeline toggle — pill with glowing border + gradient text */}
           <button
             onClick={() => setTimelineOpen(!timelineOpen)}
-            className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-5 py-2 rounded-full bg-surface-2/90 backdrop-blur-sm border border-surface-border-bright border-glow-cyan text-xs font-semibold hover:border-accent-cyan/50 transition-all shadow-panel"
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1500] flex items-center gap-2 px-5 py-2 rounded-full bg-surface-2/90 backdrop-blur-sm border border-surface-border-bright border-glow-cyan text-xs font-semibold hover:border-accent-cyan/50 transition-all shadow-panel"
           >
             <span className="w-2 h-2 rounded-full bg-accent-cyan animate-ping-subtle" />
             <span className="gradient-text">{timelineOpen ? 'Hide' : 'Show'} Event Timeline</span>
           </button>
         </div>
         {selectedVehicleId && (
-          <div className="w-80 shrink-0 flex flex-col bg-gradient-to-b from-surface-1 to-surface border-l border-surface-border overflow-y-auto scrollbar-thin z-10">
+          <div className="w-80 shrink-0 flex flex-col bg-surface-1/95 backdrop-blur-sm border-l border-surface-border overflow-y-auto scrollbar-thin z-10 shadow-[-2px_0_24px_rgba(192,132,252,0.08)]">
             <VehiclePanel vehicleId={selectedVehicleId} />
           </div>
         )}

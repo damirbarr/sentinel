@@ -1,17 +1,15 @@
 import { useState } from 'react'
 import WeatherForm from './WeatherForm'
 import GeofenceForm from './GeofenceForm'
-import NetworkForm from './NetworkForm'
 import ActiveConstraints from './ActiveConstraints'
 import { useVehiclesStore } from '../../store/vehicles.store'
 import { useUIStore } from '../../store/ui.store'
 
-type Tab = 'constraints' | 'weather' | 'geofence' | 'network'
+type Tab = 'constraints' | 'weather' | 'geofence'
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'constraints', label: 'Active', icon: '◈' },
+  { id: 'constraints', label: 'Constraints', icon: '⊛' },
   { id: 'weather',     label: 'Weather', icon: '⛈' },
   { id: 'geofence',    label: 'Geofence', icon: '⬡' },
-  { id: 'network',     label: 'Network', icon: '⊟' },
 ]
 
 export default function ControlPanel() {
@@ -64,7 +62,6 @@ export default function ControlPanel() {
         {tab === 'constraints' && <ActiveConstraints />}
         {tab === 'weather'     && <WeatherForm />}
         {tab === 'geofence'    && <GeofenceForm />}
-        {tab === 'network'     && <NetworkForm />}
       </div>
     </div>
   )

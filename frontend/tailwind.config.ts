@@ -6,29 +6,29 @@ export default {
     extend: {
       colors: {
         surface: {
-          DEFAULT: '#06080f',    // near-black, deep space
-          1: '#0b0f1c',          // sidebar base
-          2: '#101624',          // card base
-          3: '#161e30',          // elevated card
-          border: '#1c2740',     // subtle border
-          'border-bright': '#2a3a5c',  // hover/active borders
+          DEFAULT: '#07060f',      // deep purple-black
+          1: '#0e0b1e',            // rich dark purple
+          2: '#14112a',            // medium dark purple
+          3: '#1c1838',            // elevated purple
+          border: '#2a2550',       // purple border
+          'border-bright': '#3d3680',  // bright purple border on hover
         },
         accent: {
-          blue:   '#38bdf8',   // sky blue
-          cyan:   '#22d3ee',   // electric cyan
-          violet: '#a78bfa',   // soft violet
-          green:  '#34d399',   // emerald
-          amber:  '#fbbf24',   // gold amber
-          red:    '#f87171',   // coral red
-          orange: '#fb923c',   // vivid orange
+          blue:   '#60a5fa',   // lighter blue for readability
+          cyan:   '#22d3ee',   // electric cyan (keep)
+          violet: '#c084fc',   // bright violet/purple
+          green:  '#4ade80',   // bright green
+          amber:  '#fcd34d',   // brighter amber/gold
+          red:    '#fc8181',   // softer coral red
+          orange: '#fdba74',   // light orange
           pink:   '#f472b6',   // hot pink
-          indigo: '#818cf8',   // indigo
+          teal:   '#2dd4bf',   // teal
         },
         decision: {
-          normal:   '#34d399',
-          degraded: '#fbbf24',
-          stop:     '#f87171',
-          reroute:  '#fb923c',
+          normal:   '#4ade80',   // bright green
+          degraded: '#fcd34d',   // gold
+          stop:     '#fc8181',   // coral
+          reroute:  '#fdba74',   // orange
         },
       },
       fontFamily: {
