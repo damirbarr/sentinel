@@ -20,7 +20,7 @@ def parse_config() -> SentinelConfig:
     parser.add_argument('--status-interval', type=float, default=3.0)
     parser.add_argument('--lat', type=float, default=37.7749)
     parser.add_argument('--lng', type=float, default=-122.4194)
-    parser.add_argument('--max-constraint-distance', type=float, default=0.0,
+    parser.add_argument('--max-constraint-distance', type=float, default=1.0,
         help='Ignore geofence/weather constraints whose nearest point is farther than this (km). 0 = disabled.')
     args = parser.parse_args()
     return SentinelConfig(
