@@ -3,6 +3,7 @@ import math
 import time
 import asyncio
 import logging
+import random
 from sentinel.simulation.vehicle_state import VehicleState
 from sentinel.models.status import VehiclePosition
 
@@ -49,6 +50,7 @@ class RouteSimulator:
         self._route = _build_route(state.position.lat, state.position.lng)
         self._idx = 0
         self._running = False
+        self._step = 0
 
     async def run(self) -> None:
         self._running = True
@@ -58,10 +60,29 @@ class RouteSimulator:
             now = time.monotonic()
             delta = now - last
             last = now
+            self._step += 1
             target = self._route[self._idx]
-            if _distance_m(self.state.position, target) < self.ARRIVAL_THRESHOLD_M:
+
+            # Apply speed noise for realism in normal driving
+            if self.state.current_decision == 'NORMAL':
+                noise = random.uniform(-1.5, 1.5)
+                self.state.speed_kmh = max(0, self.state.normal_speed_kmh + noise)
+
+            # Add subtle heading jitter in CAUTION zones
+            if self.state.cautious_mode:
+                self.state.heading = (self.state.heading + random.uniform(-3, 3)) % 360
+
+            # Advance waypoint only when moving and close enough to target
+            if self.state.speed_kmh > 0 and _distance_m(self.state.position, target) < self.ARRIVAL_THRESHOLD_M:
                 self._idx = (self._idx + 1) % len(self._route)
                 target = self._route[self._idx]
+
+            # Occasional slight route variation to feel less mechanical
+            if self._step % 20 == 0 and self.state.current_decision == 'NORMAL':
+                offset = random.choice([-1, 0, 0, 0, 1])
+                self._idx = (self._idx + offset) % len(self._route)
+                target = self._route[self._idx]
+
             self.state.heading = _bearing(self.state.position, target)
             self.state.position = VehiclePosition(
                 lat=self.state.position.lat,

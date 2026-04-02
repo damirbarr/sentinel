@@ -71,11 +71,26 @@ class Reporter:
         self._last_decision = decision
         if force or changed:
             await self._send_status(decision, codes)
+        else:
+            # Keep state in sync even when no status message is sent
+            speed = (
+                self.state.normal_speed_kmh if decision == 'NORMAL'
+                else self.state.degraded_speed_kmh if decision == 'DEGRADED_SPEED'
+                else 0.0
+            )
+            self.state.speed_kmh = speed
+            self.state.current_decision = decision
+            self.state.cautious_mode = 'IN_GEOFENCE_CAUTION_ZONE' in codes
 
     async def _send_status(self, decision: str, codes: list[str]) -> None:
-        speed = self.state.speed_kmh if decision == 'NORMAL' else (
-            self.state.degraded_speed_kmh if decision == 'DEGRADED_SPEED' else 0.0
+        speed = (
+            self.state.normal_speed_kmh if decision == 'NORMAL'
+            else self.state.degraded_speed_kmh if decision == 'DEGRADED_SPEED'
+            else 0.0
         )
+        self.state.speed_kmh = speed
+        self.state.current_decision = decision
+        self.state.cautious_mode = 'IN_GEOFENCE_CAUTION_ZONE' in codes
         payload = VehicleStatusPayload(
             position=VehiclePosition(
                 lat=self.state.position.lat,
@@ -98,3 +113,4 @@ class Reporter:
             )
             self._last_decision = decision
             await self._send_status(decision, codes)
+            # _send_status writes speed/decision/cautious_mode to state

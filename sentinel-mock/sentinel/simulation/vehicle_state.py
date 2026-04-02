@@ -14,6 +14,8 @@ class VehicleState:
     degraded_speed_kmh: float = 10.0
     heading: float = 0.0
     last_update: float = field(default_factory=time.monotonic)
+    current_decision: str = 'NORMAL'
+    cautious_mode: bool = False  # True when in CAUTION geofence zone
 
     def update_position(self, delta_seconds: float) -> None:
         dist_m = (self.speed_kmh / 3.6) * delta_seconds
