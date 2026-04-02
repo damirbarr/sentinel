@@ -1,6 +1,7 @@
 import { useVehiclesStore } from '../../store/vehicles.store'
 import { useEventsStore } from '../../store/events.store'
 import BrainCanvas from './BrainCanvas'
+import CommandPanel from './CommandPanel'
 import type { DecisionState } from '../../types'
 
 const DECISION_COLOR: Record<DecisionState, string> = {
@@ -22,6 +23,9 @@ const REASON_META: Record<string, { label: string; color: string }> = {
   NETWORK_POOR:               { label: 'Poor Signal',   color: 'text-orange-400 bg-orange-400/10 border-orange-400/20' },
   NETWORK_LOST:               { label: 'Signal Lost',   color: 'text-orange-400 bg-orange-400/10 border-orange-400/20' },
   MULTI_FACTOR_RISK:          { label: 'Multi-Risk',    color: 'text-violet-400 bg-violet-400/10 border-violet-400/20' },
+  PERCEPTION_ALARM:           { label: 'Perception Alarm', color: 'text-violet-400 bg-violet-400/10 border-violet-400/20' },
+  SENSOR_OBSTACLE_DETECTED:   { label: 'Obstacle Detected', color: 'text-red-400 bg-red-400/10 border-red-400/20' },
+  SENSOR_FAULT:               { label: 'Sensor Fault', color: 'text-amber-400 bg-amber-400/10 border-amber-400/20' },
 }
 
 const REASON_DESCRIPTIONS: Record<string, string> = {
@@ -36,6 +40,9 @@ const REASON_DESCRIPTIONS: Record<string, string> = {
   NETWORK_POOR:               'Degraded uplink — telemetry may be delayed',
   NETWORK_LOST:               'No network connectivity — autonomous fallback active',
   MULTI_FACTOR_RISK:          'Multiple simultaneous risk factors detected',
+  PERCEPTION_ALARM:           'Operator-triggered perception alarm',
+  SENSOR_OBSTACLE_DETECTED:   'Obstacle in path — emergency stop active',
+  SENSOR_FAULT:               'Sensor reporting malfunction or unreliable data',
 }
 
 export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
@@ -125,6 +132,10 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
           </div>
         </div>
       )}
+
+      <div className="border-t border-surface-border pt-4">
+        <CommandPanel vehicleId={vehicleId} />
+      </div>
 
       <p className="text-[10px] text-slate-600 text-center">
         Updated {new Date(vehicle.lastSeenAt).toLocaleTimeString()}

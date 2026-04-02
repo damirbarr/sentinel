@@ -22,4 +22,9 @@ export const api = {
     request<ActiveEvent>('/events', { method: 'POST', body: JSON.stringify(body) }),
   clearEvent: (id: string) =>
     request<ActiveEvent>(`/events/${id}`, { method: 'DELETE' }),
+  sendCommand: (vehicleId: string, command: string, payload?: Record<string, unknown>) =>
+    request<{ ok: boolean }>(`/vehicles/${vehicleId}/command`, {
+      method: 'POST',
+      body: JSON.stringify({ command, payload }),
+    }),
 }

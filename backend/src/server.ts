@@ -7,7 +7,7 @@ import { FrontendClientManager } from './ws/frontend-clients.js'
 import { SentinelClientManager } from './ws/sentinel-clients.js'
 import { Broadcaster } from './broadcast/broadcaster.js'
 import { registerEventRoutes, initEventService } from './domains/events/event.routes.js'
-import { registerVehicleRoutes, initVehicleService } from './domains/vehicles/vehicle.routes.js'
+import { registerVehicleRoutes, initVehicleService, initSentinelManager } from './domains/vehicles/vehicle.routes.js'
 import { getVehicleService } from './domains/vehicles/vehicle.service.js'
 
 export async function buildServer() {
@@ -41,6 +41,8 @@ export async function buildServer() {
 
   const frontendMgr = new FrontendClientManager(clientWss, broadcaster)
   const sentinelMgr = new SentinelClientManager(sentinelWss, broadcaster)
+
+  initSentinelManager(sentinelMgr)
 
   // Allow EventService to push constraints to connected sentinels
   const { getEventService } = await import('./domains/events/event.routes.js')

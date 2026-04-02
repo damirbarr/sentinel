@@ -6,6 +6,7 @@ from sentinel.simulation.vehicle_state import VehicleState
 from sentinel.policy.decision_engine import DecisionEngine
 from sentinel.models.events import ActiveConstraint, parse_constraint
 from sentinel.transport.ws_client import WSClient
+from sentinel.policy.reason_codes import ReasonCode
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class Reporter:
         self.status_interval = status_interval
         self._constraints: list[ActiveConstraint] = []
         self._last_decision = 'NORMAL'
+        self._simulated: dict = {}  # simulated conditions from operator commands
 
     async def register(self) -> None:
         msg = SentinelMessage(
@@ -43,6 +45,62 @@ class Reporter:
             self._constraints = [parse_constraint(c) for c in raw]
             logger.info(f'{self.vehicle_id}: received {len(self._constraints)} constraint(s)')
             await self._evaluate_and_report(force=True)
+        elif msg.get('type') == 'VEHICLE_COMMAND':
+            await self._handle_command(msg.get('command', ''), msg.get('payload', {}))
+
+    async def _handle_command(self, command: str, payload: dict) -> None:
+        if command == 'SIMULATE_NETWORK_DEGRADED':
+            self._simulated['network'] = 'DEGRADED'
+        elif command == 'SIMULATE_NETWORK_LOST':
+            self._simulated['network'] = 'LOST'
+        elif command == 'SIMULATE_PERCEPTION_ALARM':
+            self._simulated['perception'] = payload.get('message', 'Perception fault detected')
+        elif command == 'SIMULATE_OBSTACLE_DETECTED':
+            self._simulated['obstacle'] = True
+        elif command == 'SIMULATE_SENSOR_FAULT':
+            self._simulated['sensor_fault'] = payload.get('description', 'Sensor malfunction')
+        elif command == 'CLEAR_SIMULATION':
+            self._simulated = {}
+        else:
+            logger.warning(f'{self.vehicle_id}: unknown command {command!r}')
+            return
+        logger.info(f'{self.vehicle_id}: applied simulation {command}')
+        await self._evaluate_and_report(force=True)
+
+    def _apply_simulated(self, decision: str, codes: list[str]) -> tuple[str, list[str]]:
+        priority = {'SAFE_STOP_RECOMMENDED': 3, 'REROUTE_RECOMMENDED': 2, 'DEGRADED_SPEED': 1, 'NORMAL': 0}
+        new_codes = list(codes)
+
+        if 'network' in self._simulated:
+            sev = self._simulated['network']
+            if sev == 'LOST':
+                if priority.get('SAFE_STOP_RECOMMENDED', 0) > priority.get(decision, 0):
+                    decision = 'SAFE_STOP_RECOMMENDED'
+                new_codes.append(ReasonCode.NETWORK_LOST.value)
+            else:
+                if priority.get('DEGRADED_SPEED', 0) > priority.get(decision, 0):
+                    decision = 'DEGRADED_SPEED'
+                new_codes.append(ReasonCode.NETWORK_POOR.value)
+
+        if 'obstacle' in self._simulated:
+            decision = 'SAFE_STOP_RECOMMENDED'
+            new_codes.append(ReasonCode.SENSOR_OBSTACLE_DETECTED.value)
+
+        if 'perception' in self._simulated:
+            if priority.get('DEGRADED_SPEED', 0) > priority.get(decision, 0):
+                decision = 'DEGRADED_SPEED'
+            new_codes.append(ReasonCode.PERCEPTION_ALARM.value)
+
+        if 'sensor_fault' in self._simulated:
+            if priority.get('DEGRADED_SPEED', 0) > priority.get(decision, 0):
+                decision = 'DEGRADED_SPEED'
+            new_codes.append(ReasonCode.SENSOR_FAULT.value)
+
+        # Deduplicate
+        unique = list(dict.fromkeys(new_codes))
+        if len([c for c in unique if not c.startswith('MULTI')]) > 1 and ReasonCode.MULTI_FACTOR_RISK.value not in unique:
+            unique.append(ReasonCode.MULTI_FACTOR_RISK.value)
+        return decision, unique
 
     async def _evaluate_and_report(self, force: bool = False) -> None:
         decision, codes = self.engine.evaluate(
@@ -50,6 +108,9 @@ class Reporter:
             lat=self.state.position.lat,
             lng=self.state.position.lng,
         )
+        # Apply simulated conditions (override/augment)
+        if self._simulated:
+            decision, codes = self._apply_simulated(decision, codes)
         changed = decision != self._last_decision
         if changed:
             event_msg = SentinelMessage(
@@ -111,6 +172,8 @@ class Reporter:
             decision, codes = self.engine.evaluate(
                 self._constraints, lat=self.state.position.lat, lng=self.state.position.lng
             )
+            if self._simulated:
+                decision, codes = self._apply_simulated(decision, codes)
             self._last_decision = decision
             await self._send_status(decision, codes)
             # _send_status writes speed/decision/cautious_mode to state

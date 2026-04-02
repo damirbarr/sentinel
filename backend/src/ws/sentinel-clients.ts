@@ -91,6 +91,13 @@ export class SentinelClientManager {
     }
   }
 
+  sendCommand(vehicleId: string, command: string, payload: Record<string, unknown> = {}): boolean {
+    const ws = this.sentinels.get(vehicleId)
+    if (!ws || ws.readyState !== WebSocket.OPEN) return false
+    ws.send(JSON.stringify({ type: 'VEHICLE_COMMAND', command, payload }))
+    return true
+  }
+
   getSentinelIds(): string[] {
     return Array.from(this.sentinels.keys())
   }

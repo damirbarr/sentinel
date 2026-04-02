@@ -17,6 +17,9 @@ export type ReasonCode =
   | 'NETWORK_POOR'
   | 'NETWORK_LOST'
   | 'MULTI_FACTOR_RISK'
+  | 'PERCEPTION_ALARM'
+  | 'SENSOR_OBSTACLE_DETECTED'
+  | 'SENSOR_FAULT'
 
 // ─── Vehicles ────────────────────────────────────────────────────────────────
 export interface VehiclePosition {
