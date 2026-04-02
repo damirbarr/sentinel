@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useVehiclesStore } from '../../store/vehicles.store'
 import { useEventsStore } from '../../store/events.store'
 import BrainCanvas from './BrainCanvas'
@@ -47,6 +48,8 @@ const REASON_DESCRIPTIONS: Record<string, string> = {
 export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
   const vehicle = useVehiclesStore((s) => s.vehicles[vehicleId])
   const events = useEventsStore((s) => s.events)
+  const [fullscreen, setFullscreen] = useState(false)
+
   if (!vehicle) return null
 
   const activeConstraints = vehicle.activeConstraintIds
@@ -54,17 +57,42 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
     .filter(Boolean)
 
   return (
-    <div className="flex flex-col gap-4 p-4 select-none" style={{ userSelect: 'none' }}>
+    <div
+      className={fullscreen
+        ? 'fixed inset-0 z-[2000] bg-surface overflow-y-auto scrollbar-thin'
+        : 'flex flex-col gap-4 p-4 select-none'}
+      style={{ userSelect: 'none' }}
+    >
+      {/* Sticky close button when fullscreen */}
+      {fullscreen && (
+        <button
+          onClick={() => setFullscreen(false)}
+          style={{ position: 'sticky', top: 8, float: 'right', marginRight: 8, zIndex: 10 }}
+          className="text-slate-400 hover:text-white border border-surface-border hover:border-surface-border-bright rounded px-2 py-1 text-xs font-mono bg-surface-2"
+        >
+          ✕ CLOSE
+        </button>
+      )}
+
       {/* Brain visualization */}
-      <div className="flex flex-col items-center pt-2" style={{ userSelect: 'none' }}>
-        <p className="text-[11px] font-bold tracking-[0.25em] text-slate-200 uppercase mb-3">
-          Sentinel Cognition
-        </p>
+      <div className={`flex flex-col items-center pt-2${fullscreen ? ' px-4' : ''}`} style={{ userSelect: 'none' }}>
+        <div className="flex items-center justify-between mb-3 w-full">
+          <p className="text-[11px] font-bold tracking-[0.25em] text-slate-200 uppercase">
+            Sentinel Cognition
+          </p>
+          <button
+            onClick={() => setFullscreen(!fullscreen)}
+            className="text-slate-500 hover:text-slate-300 transition-colors text-[10px] font-mono border border-surface-border hover:border-surface-border-bright rounded px-1.5 py-0.5"
+          >
+            {fullscreen ? '⊡ EXIT' : '⊞ FULL'}
+          </button>
+        </div>
         <BrainCanvas
           decision={vehicle.decision}
           reasonCodes={vehicle.reasonCodes}
           speedKmh={vehicle.speedKmh}
           activeConstraints={activeConstraints}
+          fullscreen={fullscreen}
         />
         {/* Decision label below canvas — replaces removed Html overlay */}
         <div className={`mt-2 w-full rounded-xl border p-3 ${DECISION_COLOR[vehicle.decision]}`}>
@@ -74,7 +102,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
       </div>
 
       {/* Telemetry grid */}
-      <div className="grid grid-cols-2 gap-2" style={{ userSelect: 'none' }}>
+      <div className={`grid grid-cols-2 gap-2${fullscreen ? ' px-4' : ''}`} style={{ userSelect: 'none' }}>
         {[
           { label: 'Speed', value: `${vehicle.speedKmh.toFixed(0)} km/h` },
           { label: 'Heading', value: `${vehicle.position.heading.toFixed(0)}°` },
@@ -90,7 +118,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
 
       {/* Active signals */}
       {vehicle.reasonCodes.length > 0 && (
-        <div style={{ userSelect: 'none' }}>
+        <div className={fullscreen ? 'px-4' : ''} style={{ userSelect: 'none' }}>
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-300 mb-2">Active Signals</p>
           <div className="flex flex-wrap gap-1.5">
             {vehicle.reasonCodes.map((code) => {
@@ -114,7 +142,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
 
       {/* Affecting constraints */}
       {activeConstraints.length > 0 && (
-        <div style={{ userSelect: 'none' }}>
+        <div className={fullscreen ? 'px-4' : ''} style={{ userSelect: 'none' }}>
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-300 mb-2">Constraint Feed</p>
           <div className="space-y-1.5">
             {activeConstraints.map((event) => (
@@ -131,7 +159,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
         </div>
       )}
 
-      <p className="text-[10px] text-slate-500 text-center">
+      <p className={`text-[10px] text-slate-500 text-center${fullscreen ? ' pb-4' : ''}`}>
         Updated {new Date(vehicle.lastSeenAt).toLocaleTimeString()}
       </p>
     </div>

@@ -77,7 +77,7 @@ async def run(config) -> None:
         vehicle_id=config.vehicle_id,
         position=VehiclePosition(lat=config.start_lat, lng=config.start_lng, heading=0.0),
     )
-    engine = DecisionEngine(vehicle_id=config.vehicle_id)
+    engine = DecisionEngine(vehicle_id=config.vehicle_id, max_constraint_distance_km=config.max_constraint_distance_km)
     simulator = RouteSimulator(state)
 
     reporter: Reporter  # forward ref

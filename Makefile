@@ -1,10 +1,11 @@
 .PHONY: install dev frontend backend mock mock-2 mock-simulator test test-backend test-mock clean venv-setup venv-check
 
 # ── Config ────────────────────────────────────────────────────────────────────
-VEHICLE_ID   ?= vehicle-001
-BACKEND_URL  ?= ws://localhost:3001/ws/sentinels
-START_LAT    ?= 37.7749
-START_LNG    ?= -122.4194
+VEHICLE_ID      ?= vehicle-001
+BACKEND_URL     ?= ws://localhost:3001/ws/sentinels
+START_LAT       ?= 37.7749
+START_LNG       ?= -122.4194
+MAX_DISTANCE_KM ?= 0
 
 MOCK_DIR     := sentinel-mock
 VENV         := $(MOCK_DIR)/.venv
@@ -50,7 +51,8 @@ mock: venv-check
 		--vehicle-id $(VEHICLE_ID) \
 		--backend-url $(BACKEND_URL) \
 		--lat $(START_LAT) \
-		--lng $(START_LNG)
+		--lng $(START_LNG) \
+		$(if $(filter-out 0,$(MAX_DISTANCE_KM)),--max-constraint-distance $(MAX_DISTANCE_KM),)
 
 mock-2: venv-check
 	$(MAKE) -j2 \

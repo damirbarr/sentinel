@@ -30,6 +30,12 @@ def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     return R * 2 * math.asin(math.sqrt(a))
 
 
+def _polygon_centroid(polygon: list[LatLng]) -> tuple[float, float]:
+    lat = sum(p.lat for p in polygon) / len(polygon)
+    lng = sum(p.lng for p in polygon) / len(polygon)
+    return lat, lng
+
+
 def _eval_weather(p: WeatherPayload, lat: float, lng: float) -> tuple[DecisionState, list[str]]:
     # If weather has a geographic zone, check if vehicle is inside
     if hasattr(p, 'center') and p.center is not None and hasattr(p, 'radiusMeters') and p.radiusMeters:
@@ -69,16 +75,36 @@ def _eval_network(p: NetworkPayload, vehicle_id: str) -> tuple[DecisionState, li
 
 
 class DecisionEngine:
-    def __init__(self, vehicle_id: str):
+    def __init__(self, vehicle_id: str, max_constraint_distance_km: float = 0.0):
         self.vehicle_id = vehicle_id
+        self.max_distance_km = max_constraint_distance_km
 
     def evaluate(self, constraints: list[ActiveConstraint], lat: float, lng: float) -> tuple[DecisionState, list[str]]:
-        overall: DecisionState = 'NORMAL'
-        codes: list[str] = []
-
+        filtered = []
         for c in constraints:
             if not c.active:
                 continue
+            if self.max_distance_km > 0 and c.type == 'GEOFENCE':
+                p = c.payload  # GeofencePayload
+                if hasattr(p, 'polygon') and p.polygon:
+                    clat, clng = _polygon_centroid(p.polygon)
+                    dist_km = _haversine_m(lat, lng, clat, clng) / 1000.0
+                    if dist_km > self.max_distance_km:
+                        continue  # too far, ignore
+            if self.max_distance_km > 0 and c.type == 'WEATHER':
+                p = c.payload
+                if hasattr(p, 'center') and p.center is not None and hasattr(p, 'radiusMeters') and p.radiusMeters:
+                    dist_m = _haversine_m(lat, lng, p.center.lat, p.center.lng)
+                    # Only ignore if vehicle is outside radius AND more than max_distance_km from the edge
+                    edge_dist_km = max(0.0, dist_m - p.radiusMeters) / 1000.0
+                    if edge_dist_km > self.max_distance_km:
+                        continue  # too far from the weather zone edge
+            filtered.append(c)
+
+        overall: DecisionState = 'NORMAL'
+        codes: list[str] = []
+
+        for c in filtered:
             if c.type == 'WEATHER':
                 d, cc = _eval_weather(c.payload, lat, lng)  # type: ignore[arg-type]
             elif c.type == 'GEOFENCE':

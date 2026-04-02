@@ -1,8 +1,9 @@
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Sphere, Line, Points, PointMaterial } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { ActiveEvent, DecisionState, ReasonCode, WeatherPayload, GeofencePayload, NetworkPayload } from '../../types'
 
 const DECISION_COLOR: Record<string, string> = {
@@ -106,16 +107,22 @@ interface ConstraintNodeProps {
   constraint: ActiveEvent
   index: number
   total: number
+  onHover: (c: ActiveEvent | null) => void
 }
 
-function ConstraintNode({ constraint, index, total }: ConstraintNodeProps) {
+function ConstraintNode({ constraint, index, total, onHover }: ConstraintNodeProps) {
   const typeColor = TYPE_COLOR[constraint.type] ?? '#a78bfa'
   const nodePos = getNodePosition(index, total)
 
   return (
     <group>
       {/* Glowing sphere */}
-      <Sphere args={[0.12, 12, 12]} position={nodePos}>
+      <Sphere
+        args={[0.12, 12, 12]}
+        position={nodePos}
+        onPointerOver={(e) => { e.stopPropagation(); onHover(constraint) }}
+        onPointerOut={() => onHover(null)}
+      >
         <meshStandardMaterial
           color={typeColor}
           emissive={typeColor}
@@ -182,9 +189,10 @@ function IdleParticleCloud() {
 interface SceneProps {
   decision: DecisionState
   activeConstraints: ActiveEvent[]
+  onHoverConstraint: (c: ActiveEvent | null) => void
 }
 
-function Scene({ decision, activeConstraints }: SceneProps) {
+function Scene({ decision, activeConstraints, onHoverConstraint }: SceneProps) {
   const decisionColor = DECISION_COLOR[decision] ?? '#22d3ee'
 
   return (
@@ -207,6 +215,7 @@ function Scene({ decision, activeConstraints }: SceneProps) {
             constraint={constraint}
             index={i}
             total={activeConstraints.length}
+            onHover={onHoverConstraint}
           />
         ))
       )}
@@ -225,20 +234,75 @@ export interface BrainCanvasProps {
   reasonCodes: ReasonCode[]
   speedKmh: number
   activeConstraints: ActiveEvent[]
+  fullscreen?: boolean
 }
 
-export default function BrainCanvas({ decision, speedKmh, activeConstraints }: BrainCanvasProps) {
+export default function BrainCanvas({ decision, speedKmh, activeConstraints, fullscreen }: BrainCanvasProps) {
+  const [hoveredConstraint, setHoveredConstraint] = useState<ActiveEvent | null>(null)
+  const orbitRef = useRef<OrbitControlsImpl>(null)
+
   return (
-    <Canvas
-      style={{ height: '260px', background: 'transparent', userSelect: 'none' }}
-      camera={{ position: [0, 1.5, 4], fov: 50 }}
-      gl={{ alpha: true, antialias: true }}
-    >
-      <OrbitControls autoRotate autoRotateSpeed={0.4} enableZoom={false} enablePan={false} />
-      <Scene
-        decision={decision}
-        activeConstraints={activeConstraints}
-      />
-    </Canvas>
+    <div style={{ position: 'relative', height: fullscreen ? '420px' : '260px', userSelect: 'none' }}>
+      <Canvas
+        style={{ height: '100%', background: 'transparent', userSelect: 'none' }}
+        camera={{ position: [0, 1.5, 4], fov: 50 }}
+        gl={{ alpha: true, antialias: true }}
+      >
+        <OrbitControls
+          ref={orbitRef as any}
+          autoRotate
+          autoRotateSpeed={0.4}
+          enableZoom={true}
+          minDistance={2}
+          maxDistance={7}
+          enablePan={false}
+        />
+        <Scene
+          decision={decision}
+          activeConstraints={activeConstraints}
+          onHoverConstraint={setHoveredConstraint}
+        />
+      </Canvas>
+
+      {/* Reset view button — top-right */}
+      <button
+        onClick={() => { (orbitRef.current as any)?.reset() }}
+        style={{
+          position: 'absolute', top: 8, right: 8, zIndex: 10,
+          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+          color: '#64748b', fontFamily: 'monospace', fontSize: '9px',
+          transition: 'all 0.15s',
+        }}
+        onMouseEnter={(e) => { (e.target as HTMLButtonElement).style.color = '#94a3b8'; (e.target as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.2)' }}
+        onMouseLeave={(e) => { (e.target as HTMLButtonElement).style.color = '#64748b'; (e.target as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.1)' }}
+        title="Reset view"
+      >
+        ⟲ RESET
+      </button>
+
+      {/* Scroll/drag hint — bottom-left */}
+      <div style={{ position: 'absolute', bottom: hoveredConstraint ? 56 : 8, left: 8, zIndex: 10, color: '#334155', fontFamily: 'monospace', fontSize: '8px', pointerEvents: 'none', transition: 'bottom 0.2s' }}>
+        scroll to zoom · drag to rotate
+      </div>
+
+      {/* Hover tooltip — bottom-center */}
+      {hoveredConstraint && (
+        <div style={{
+          position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(7,6,15,0.92)', border: `1px solid ${TYPE_COLOR[hoveredConstraint.type] ?? '#a78bfa'}40`,
+          borderRadius: 8, padding: '6px 12px', pointerEvents: 'none', zIndex: 10,
+          backdropFilter: 'blur(8px)', whiteSpace: 'nowrap',
+          boxShadow: `0 0 12px ${TYPE_COLOR[hoveredConstraint.type] ?? '#a78bfa'}30`,
+        }}>
+          <div style={{ color: TYPE_COLOR[hoveredConstraint.type] ?? '#a78bfa', fontFamily: 'monospace', fontSize: '10px', fontWeight: 'bold', marginBottom: 2 }}>
+            {hoveredConstraint.type}
+          </div>
+          <div style={{ color: '#cbd5e1', fontFamily: 'monospace', fontSize: '9px' }}>
+            {getConstraintSummary(hoveredConstraint)}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

@@ -102,6 +102,27 @@ class Reporter:
             unique.append(ReasonCode.MULTI_FACTOR_RISK.value)
         return decision, unique
 
+    def _compute_speed(self, decision: str, codes: list[str]) -> float:
+        if decision in ('SAFE_STOP_RECOMMENDED', 'REROUTE_RECOMMENDED'):
+            return 0.0
+        if decision == 'DEGRADED_SPEED':
+            # Count distinct degrading sources (weather, geofence, network, simulated)
+            sources = set()
+            for code in codes:
+                if code.startswith('WEATHER'):
+                    sources.add('weather')
+                elif code.startswith('IN_GEOFENCE') or code.startswith('GEOFENCE'):
+                    sources.add('geofence')
+                elif code.startswith('NETWORK'):
+                    sources.add('network')
+                elif code in ('PERCEPTION_ALARM', 'SENSOR_FAULT'):
+                    sources.add('internal')
+            n = max(1, len(sources))
+            # Each additional source reduces speed by 25% (floor at 30% of degraded)
+            factor = max(0.3, 1.0 - (n - 1) * 0.25)
+            return round(self.state.degraded_speed_kmh * factor, 1)
+        return self.state.normal_speed_kmh
+
     async def _evaluate_and_report(self, force: bool = False) -> None:
         decision, codes = self.engine.evaluate(
             self._constraints,
@@ -134,21 +155,13 @@ class Reporter:
             await self._send_status(decision, codes)
         else:
             # Keep state in sync even when no status message is sent
-            speed = (
-                self.state.normal_speed_kmh if decision == 'NORMAL'
-                else self.state.degraded_speed_kmh if decision == 'DEGRADED_SPEED'
-                else 0.0
-            )
+            speed = self._compute_speed(decision, codes)
             self.state.speed_kmh = speed
             self.state.current_decision = decision
             self.state.cautious_mode = 'IN_GEOFENCE_CAUTION_ZONE' in codes
 
     async def _send_status(self, decision: str, codes: list[str]) -> None:
-        speed = (
-            self.state.normal_speed_kmh if decision == 'NORMAL'
-            else self.state.degraded_speed_kmh if decision == 'DEGRADED_SPEED'
-            else 0.0
-        )
+        speed = self._compute_speed(decision, codes)
         self.state.speed_kmh = speed
         self.state.current_decision = decision
         self.state.cautious_mode = 'IN_GEOFENCE_CAUTION_ZONE' in codes
