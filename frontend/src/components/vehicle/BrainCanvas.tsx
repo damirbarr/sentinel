@@ -242,7 +242,7 @@ export default function BrainCanvas({ decision, speedKmh, activeConstraints, ful
   const orbitRef = useRef<OrbitControlsImpl>(null)
 
   return (
-    <div style={{ position: 'relative', height: fullscreen ? '420px' : '260px', userSelect: 'none' }}>
+    <div style={{ position: 'relative', height: fullscreen ? '100vh' : '260px', userSelect: 'none' }}>
       <Canvas
         style={{ height: '100%', background: 'transparent', userSelect: 'none' }}
         camera={{ position: [0, 1.5, 4], fov: 50 }}

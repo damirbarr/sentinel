@@ -56,35 +56,118 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
     .map((id) => events[id])
     .filter(Boolean)
 
-  return (
-    <div
-      className={fullscreen
-        ? 'fixed inset-0 z-[2000] bg-surface overflow-y-auto scrollbar-thin'
-        : 'flex flex-col gap-4 p-4 select-none'}
-      style={{ userSelect: 'none' }}
-    >
-      {/* Sticky close button when fullscreen */}
-      {fullscreen && (
-        <button
-          onClick={() => setFullscreen(false)}
-          style={{ position: 'sticky', top: 8, float: 'right', marginRight: 8, zIndex: 10 }}
-          className="text-slate-400 hover:text-white border border-surface-border hover:border-surface-border-bright rounded px-2 py-1 text-xs font-mono bg-surface-2"
-        >
-          ✕ CLOSE
-        </button>
-      )}
+  if (fullscreen) {
+    return (
+      <div className="fixed inset-0 z-[2000] bg-surface flex flex-col" style={{ userSelect: 'none' }}>
+        {/* Full-viewport brain */}
+        <div className="relative flex-1 min-h-0">
+          {/* Header bar overlaid on brain */}
+          <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 pt-3 pb-2 bg-gradient-to-b from-surface/80 to-transparent pointer-events-none">
+            <p className="text-[11px] font-bold tracking-[0.25em] text-slate-200 uppercase">Sentinel Cognition</p>
+            <button
+              onClick={() => setFullscreen(false)}
+              className="pointer-events-auto text-slate-400 hover:text-white border border-surface-border hover:border-surface-border-bright rounded px-2 py-1 text-xs font-mono bg-surface/60 backdrop-blur-sm"
+            >
+              ⊡ EXIT
+            </button>
+          </div>
+          <BrainCanvas
+            decision={vehicle.decision}
+            reasonCodes={vehicle.reasonCodes}
+            speedKmh={vehicle.speedKmh}
+            activeConstraints={activeConstraints}
+            fullscreen
+          />
+        </div>
 
+        {/* Info strip below brain — scrollable */}
+        <div className="overflow-y-auto scrollbar-thin bg-surface border-t border-surface-border max-h-[40vh]">
+          <div className="flex flex-col gap-3 p-4">
+            {/* Decision state */}
+            <div className={`rounded-xl border p-3 ${DECISION_COLOR[vehicle.decision]}`}>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-current opacity-70 mb-1">Decision State</p>
+              <p className="font-mono font-bold text-base">{vehicle.decision.replace(/_/g, ' ')}</p>
+            </div>
+
+            {/* Active signals */}
+            {vehicle.reasonCodes.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-300 mb-2">Active Signals</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {vehicle.reasonCodes.map((code) => {
+                    const meta = REASON_META[code] ?? { label: code, color: 'text-slate-400 bg-slate-400/10 border-slate-400/20' }
+                    return (
+                      <div key={code} className="relative group">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${meta.color}`}>
+                          <span className="w-1 h-1 rounded-full bg-current" />
+                          {meta.label}
+                        </span>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                          {REASON_DESCRIPTIONS[code] ?? code}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Constraint feed */}
+            {activeConstraints.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-300 mb-2">Constraint Feed</p>
+                <div className="space-y-1.5">
+                  {activeConstraints.map((event) => (
+                    <div key={event.id} className="flex items-center gap-2 p-2 rounded-lg bg-surface-2 border border-surface-border">
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                        event.type === 'WEATHER' ? 'bg-amber-400/20 text-amber-400' :
+                        event.type === 'GEOFENCE' ? 'bg-red-400/20 text-red-400' :
+                        'bg-orange-400/20 text-orange-400'
+                      }`}>{event.type}</span>
+                      <span className="text-[10px] font-mono text-slate-300 truncate">{event.id.slice(0, 12)}…</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Telemetry */}
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { label: 'Speed', value: `${vehicle.speedKmh.toFixed(0)} km/h` },
+                { label: 'Heading', value: `${vehicle.position.heading.toFixed(0)}°` },
+                { label: 'Latitude', value: vehicle.position.lat.toFixed(5) },
+                { label: 'Longitude', value: vehicle.position.lng.toFixed(5) },
+              ].map(({ label, value }) => (
+                <div key={label} className="p-2.5 rounded-lg bg-surface-2 border border-surface-border">
+                  <p className="text-[10px] text-slate-400 mb-0.5">{label}</p>
+                  <p className="text-xs font-mono font-bold text-slate-100">{value}</p>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-[10px] text-slate-500 text-center pb-1">
+              Updated {new Date(vehicle.lastSeenAt).toLocaleTimeString()}
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-4 p-4 select-none" style={{ userSelect: 'none' }}>
       {/* Brain visualization */}
-      <div className={`flex flex-col items-center pt-2${fullscreen ? ' px-4' : ''}`} style={{ userSelect: 'none' }}>
+      <div className="flex flex-col items-center pt-2" style={{ userSelect: 'none' }}>
         <div className="flex items-center justify-between mb-3 w-full">
           <p className="text-[11px] font-bold tracking-[0.25em] text-slate-200 uppercase">
             Sentinel Cognition
           </p>
           <button
-            onClick={() => setFullscreen(!fullscreen)}
+            onClick={() => setFullscreen(true)}
             className="text-slate-500 hover:text-slate-300 transition-colors text-[10px] font-mono border border-surface-border hover:border-surface-border-bright rounded px-1.5 py-0.5"
           >
-            {fullscreen ? '⊡ EXIT' : '⊞ FULL'}
+            ⊞ FULL
           </button>
         </div>
         <BrainCanvas
@@ -92,9 +175,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
           reasonCodes={vehicle.reasonCodes}
           speedKmh={vehicle.speedKmh}
           activeConstraints={activeConstraints}
-          fullscreen={fullscreen}
         />
-        {/* Decision label below canvas — replaces removed Html overlay */}
         <div className={`mt-2 w-full rounded-xl border p-3 ${DECISION_COLOR[vehicle.decision]}`}>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-current opacity-70 mb-1">Decision State</p>
           <p className="font-mono font-bold text-base">{vehicle.decision.replace(/_/g, ' ')}</p>
@@ -103,7 +184,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
 
       {/* Active signals */}
       {vehicle.reasonCodes.length > 0 && (
-        <div className={fullscreen ? 'px-4' : ''} style={{ userSelect: 'none' }}>
+        <div style={{ userSelect: 'none' }}>
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-300 mb-2">Active Signals</p>
           <div className="flex flex-wrap gap-1.5">
             {vehicle.reasonCodes.map((code) => {
@@ -127,7 +208,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
 
       {/* Affecting constraints */}
       {activeConstraints.length > 0 && (
-        <div className={fullscreen ? 'px-4' : ''} style={{ userSelect: 'none' }}>
+        <div style={{ userSelect: 'none' }}>
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-300 mb-2">Constraint Feed</p>
           <div className="space-y-1.5">
             {activeConstraints.map((event) => (
@@ -145,7 +226,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
       )}
 
       {/* Telemetry grid */}
-      <div className={`grid grid-cols-2 gap-2${fullscreen ? ' px-4' : ''}`} style={{ userSelect: 'none' }}>
+      <div className="grid grid-cols-2 gap-2" style={{ userSelect: 'none' }}>
         {[
           { label: 'Speed', value: `${vehicle.speedKmh.toFixed(0)} km/h` },
           { label: 'Heading', value: `${vehicle.position.heading.toFixed(0)}°` },
@@ -159,7 +240,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
         ))}
       </div>
 
-      <p className={`text-[10px] text-slate-500 text-center${fullscreen ? ' pb-4' : ''}`}>
+      <p className="text-[10px] text-slate-500 text-center">
         Updated {new Date(vehicle.lastSeenAt).toLocaleTimeString()}
       </p>
     </div>
