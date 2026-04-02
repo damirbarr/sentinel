@@ -18,7 +18,7 @@ export default function GeofenceDrawer() {
       editMode: false, dragMode: false, cutPolygon: false, removalMode: false,
     })
     pm.setGlobalOptions({
-      pathOptions: { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.15, weight: 2 },
+      pathOptions: { color: '#38bdf8', fillColor: '#38bdf8', fillOpacity: 0.15, weight: 2 },
     })
 
     const handleCreate = (e: any) => {
@@ -32,7 +32,28 @@ export default function GeofenceDrawer() {
     }
 
     map.on('pm:create', handleCreate)
-    pm.enableDraw('Polygon')
+    pm.enableDraw('Polygon', {
+      snappable: true,
+      snapDistance: 20,
+      pathOptions: {
+        color: '#38bdf8',
+        fillColor: '#38bdf8',
+        fillOpacity: 0.15,
+        weight: 2,
+        opacity: 1,
+      },
+      templineStyle: {
+        color: '#38bdf8',
+        weight: 2,
+        opacity: 0.9,
+      },
+      hintlineStyle: {
+        color: '#38bdf8',
+        weight: 1.5,
+        opacity: 0.6,
+        dashArray: '6 4',
+      },
+    })
 
     return () => {
       pm.removeControls()

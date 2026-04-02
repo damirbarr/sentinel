@@ -4,6 +4,7 @@ import { useUIStore } from '../../store/ui.store'
 
 const CONDITIONS = ['HEAVY_RAIN', 'FOG', 'STRONG_WIND', 'LOW_VISIBILITY', 'SNOW', 'ICE'] as const
 const SEVERITIES = ['LOW', 'MODERATE', 'HIGH', 'EXTREME'] as const
+const SEV_LABEL: Record<string, string> = { LOW: 'LOW', MODERATE: 'MOD', HIGH: 'HIGH', EXTREME: 'XTRM' }
 const inp = "w-full px-3 py-2 rounded-lg bg-surface text-sm text-white border border-surface-border focus:border-accent-blue focus:outline-none focus:ring-1 focus:ring-accent-blue/30 transition-colors"
 const lbl = "block text-xs font-medium text-slate-400 mb-1"
 
@@ -46,8 +47,8 @@ export default function WeatherForm() {
         <div className="grid grid-cols-4 gap-1">
           {SEVERITIES.map((s) => (
             <button key={s} type="button" onClick={() => setSeverity(s)}
-              className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${severity === s ? 'bg-accent-blue/20 border-accent-blue text-accent-blue' : 'bg-surface border-surface-border text-slate-500 hover:text-white'}`}>
-              {s}
+              className={`py-1 rounded-lg text-xs font-medium border transition-colors ${severity === s ? 'bg-accent-blue/20 border-accent-blue text-accent-blue' : 'bg-surface border-surface-border text-slate-500 hover:text-white'}`}>
+              {SEV_LABEL[s]}
             </button>
           ))}
         </div>

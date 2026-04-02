@@ -1,5 +1,6 @@
 import { Polygon, Tooltip, Circle } from 'react-leaflet'
 import { useEventsStore } from '../../store/events.store'
+import { useUIStore } from '../../store/ui.store'
 import type { GeofencePayload, WeatherPayload } from '../../types'
 
 const STYLES: Record<string, { color: string; fillColor: string; fillOpacity: number }> = {
@@ -10,6 +11,7 @@ const STYLES: Record<string, { color: string; fillColor: string; fillOpacity: nu
 
 export default function GeofenceLayer() {
   const events = useEventsStore((s) => s.events)
+  const { pendingPolygon } = useUIStore()
   return (
     <>
       {Object.values(events)
@@ -60,6 +62,16 @@ export default function GeofenceLayer() {
             </Circle>
           )
         })}
+      {pendingPolygon && pendingPolygon.length >= 3 && (
+        <Polygon
+          positions={pendingPolygon.map((p) => [p.lat, p.lng] as [number, number])}
+          pathOptions={{ color: '#38bdf8', fillColor: '#38bdf8', fillOpacity: 0.12, weight: 2, dashArray: '6 4' }}
+        >
+          <Tooltip sticky>
+            <div className="text-xs font-medium">Pending geofence — publish to activate</div>
+          </Tooltip>
+        </Polygon>
+      )}
     </>
   )
 }

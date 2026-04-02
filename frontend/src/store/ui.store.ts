@@ -9,6 +9,7 @@ interface UIState {
   isPlacingWeather: boolean
   pendingWeatherCenter: LatLng | null
   pendingWeatherRadius: number
+  weatherHoverCenter: LatLng | null
   setSelectedVehicle: (id: string | null) => void
   setTimelineOpen: (open: boolean) => void
   setDrawingGeofence: (drawing: boolean) => void
@@ -16,6 +17,7 @@ interface UIState {
   setPlacingWeather: (placing: boolean) => void
   setPendingWeatherCenter: (center: LatLng | null) => void
   setPendingWeatherRadius: (radius: number) => void
+  setWeatherHoverCenter: (center: LatLng | null) => void
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -26,6 +28,7 @@ export const useUIStore = create<UIState>((set) => ({
   isPlacingWeather: false,
   pendingWeatherCenter: null,
   pendingWeatherRadius: 2000,
+  weatherHoverCenter: null,
   setSelectedVehicle: (id) => set({ selectedVehicleId: id }),
   setTimelineOpen: (open) => set({ timelineOpen: open }),
   setDrawingGeofence: (drawing) => set({ isDrawingGeofence: drawing }),
@@ -33,4 +36,5 @@ export const useUIStore = create<UIState>((set) => ({
   setPlacingWeather: (placing) => set({ isPlacingWeather: placing }),
   setPendingWeatherCenter: (center) => set({ pendingWeatherCenter: center }),
   setPendingWeatherRadius: (radius) => set({ pendingWeatherRadius: radius }),
+  setWeatherHoverCenter: (center) => set({ weatherHoverCenter: center }),
 }))
