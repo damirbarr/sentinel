@@ -1,9 +1,9 @@
 import { useRef, useMemo } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Sphere, Points, PointMaterial } from '@react-three/drei'
+import { OrbitControls, Sphere, Html, Line, Points, PointMaterial } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
-import type { DecisionState, ReasonCode } from '../../types'
+import type { ActiveEvent, DecisionState, ReasonCode, WeatherPayload, GeofencePayload, NetworkPayload } from '../../types'
 
 const DECISION_COLOR: Record<string, string> = {
   NORMAL: '#22d3ee',
@@ -12,148 +12,195 @@ const DECISION_COLOR: Record<string, string> = {
   REROUTE_RECOMMENDED: '#fb923c',
 }
 
-export const SENSOR_NODES = [
-  { id: 'WEATHER',  label: 'Weather Sensors',   color: '#fbbf24', codes: ['WEATHER_HEAVY_RAIN','WEATHER_FOG','WEATHER_STRONG_WIND','WEATHER_LOW_VISIBILITY'] },
-  { id: 'GEOFENCE', label: 'Geofence Detection', color: '#f87171', codes: ['IN_GEOFENCE_FORBIDDEN_ZONE','IN_GEOFENCE_CAUTION_ZONE','IN_GEOFENCE_SLOW_ZONE','GEOFENCE_AHEAD'] },
-  { id: 'NETWORK',  label: 'Network Telemetry',  color: '#fb923c', codes: ['NETWORK_POOR','NETWORK_LOST'] },
-  { id: 'MULTI',    label: 'Multi-Factor Risk',  color: '#a78bfa', codes: ['MULTI_FACTOR_RISK'] },
-  { id: 'SYSTEM',   label: 'System State',       color: '#34d399', codes: [] },
-]
-
-const NODE_ORBITS = [
-  { radius: 1.2, yTilt: 0.3,  speed: 0.4 },
-  { radius: 1.4, yTilt: -0.2, speed: 0.25 },
-  { radius: 1.1, yTilt: 0.5,  speed: 0.55 },
-  { radius: 1.6, yTilt: 0.1,  speed: 0.18 },
-  { radius: 1.0, yTilt: -0.4, speed: 0.7 },
-]
-
-// Shared mutable position store (not React state — updated every frame)
-const nodePositionStore: THREE.Vector3[] = SENSOR_NODES.map(() => new THREE.Vector3())
-
-interface NeuralCoreProps {
-  decisionColor: string
+const DECISION_SHORT: Record<string, string> = {
+  NORMAL: 'NOMINAL',
+  DEGRADED_SPEED: 'DEGRADED',
+  SAFE_STOP_RECOMMENDED: 'STOP',
+  REROUTE_RECOMMENDED: 'REROUTE',
 }
 
-function NeuralCore({ decisionColor }: NeuralCoreProps) {
+const TYPE_COLOR: Record<string, string> = {
+  WEATHER: '#fbbf24',
+  GEOFENCE: '#f87171',
+  NETWORK: '#fb923c',
+}
+
+function getNodePosition(index: number, total: number): [number, number, number] {
+  const phi = Math.acos(1 - 2 * (index + 0.5) / Math.max(total, 1))
+  const theta = Math.PI * (1 + Math.sqrt(5)) * index // golden angle
+  const r = 1.6
+  return [
+    r * Math.sin(phi) * Math.cos(theta),
+    r * Math.cos(phi),
+    r * Math.sin(phi) * Math.sin(theta),
+  ]
+}
+
+function getConstraintSummary(event: ActiveEvent): string {
+  if (event.type === 'WEATHER') {
+    const p = event.payload as WeatherPayload
+    return `${p.condition.replace(/_/g, ' ')} · ${p.severity}`
+  }
+  if (event.type === 'GEOFENCE') {
+    const p = event.payload as GeofencePayload
+    return `${p.type} zone${p.label ? ` · ${p.label}` : ''}`
+  }
+  if (event.type === 'NETWORK') {
+    const p = event.payload as NetworkPayload
+    return `Signal ${p.severity}${p.vehicleId ? ' (targeted)' : ''}`
+  }
+  return event.type
+}
+
+// ─── Decision Core ────────────────────────────────────────────────────────────
+
+interface DecisionCoreProps {
+  decisionColor: string
+  decision: DecisionState
+  speedKmh: number
+  activeConstraintsCount: number
+}
+
+function DecisionCore({ decisionColor, decision, speedKmh, activeConstraintsCount }: DecisionCoreProps) {
   const innerRef = useRef<THREE.Mesh>(null)
   const color = useMemo(() => new THREE.Color(decisionColor), [decisionColor])
 
   useFrame(({ clock }) => {
     if (innerRef.current) {
       const t = clock.getElapsedTime()
-      const scale = 1 + 0.15 * Math.sin(t * 2.5)
-      innerRef.current.scale.setScalar(scale)
+      const mat = innerRef.current.material as THREE.MeshStandardMaterial
+      mat.emissiveIntensity = 0.6 + 0.4 * Math.sin(t * (1 + activeConstraintsCount * 0.3))
     }
   })
 
   return (
-    <group>
-      <Sphere args={[0.55, 32, 32]}>
-        <meshStandardMaterial color={color} transparent opacity={0.12} wireframe={false} />
+    <group position={[0, 0, 0]}>
+      {/* Outer wireframe shell */}
+      <Sphere args={[0.6, 32, 32]}>
+        <meshStandardMaterial
+          color={decisionColor}
+          wireframe
+          transparent
+          opacity={0.15}
+        />
       </Sphere>
-      <Sphere args={[0.55, 32, 32]}>
-        <meshStandardMaterial color={color} transparent opacity={0.08} wireframe={true} />
-      </Sphere>
-      <Sphere args={[0.3, 16, 16]} ref={innerRef}>
+
+      {/* Inner glowing core */}
+      <Sphere args={[0.35, 24, 24]} ref={innerRef}>
         <meshStandardMaterial
           color={color}
           emissive={color}
-          emissiveIntensity={1.5}
-          transparent
-          opacity={0.9}
+          emissiveIntensity={0.6}
+          metalness={0.3}
+          roughness={0.4}
         />
       </Sphere>
-      <pointLight color={decisionColor} intensity={2} distance={3} />
+
+      {/* Core glow */}
+      <pointLight color={decisionColor} intensity={1.5} distance={3} />
+
+      {/* HTML label */}
+      <Html center distanceFactor={8}>
+        <div style={{ userSelect: 'none', textAlign: 'center', pointerEvents: 'none' }}>
+          <div style={{
+            color: decisionColor,
+            fontFamily: 'monospace',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            letterSpacing: '0.1em',
+            textShadow: `0 0 8px ${decisionColor}`,
+          }}>
+            {DECISION_SHORT[decision] ?? decision}
+          </div>
+          <div style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: '8px' }}>
+            {speedKmh.toFixed(0)} km/h
+          </div>
+        </div>
+      </Html>
     </group>
   )
 }
 
-interface OrbitalNodeProps {
+// ─── Constraint Node ──────────────────────────────────────────────────────────
+
+interface ConstraintNodeProps {
+  constraint: ActiveEvent
   index: number
-  nodeColor: string
-  active: boolean
+  total: number
 }
 
-function OrbitalNode({ index, nodeColor, active }: OrbitalNodeProps) {
-  const meshRef = useRef<THREE.Mesh>(null)
-  const orbit = NODE_ORBITS[index]
-  const color = useMemo(() => new THREE.Color(nodeColor), [nodeColor])
-
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime()
-    const angle = t * orbit.speed + (index * Math.PI * 2) / SENSOR_NODES.length
-    const x = orbit.radius * Math.cos(angle)
-    const z = orbit.radius * Math.sin(angle)
-    const y = orbit.yTilt * Math.sin(angle * 0.7)
-
-    // Update shared position store
-    nodePositionStore[index].set(x, y, z)
-
-    if (meshRef.current) {
-      meshRef.current.position.set(x, y, z)
-      const targetScale = active ? 1.4 : 0.8
-      const s = meshRef.current.scale.x
-      meshRef.current.scale.setScalar(s + (targetScale - s) * 0.1)
-    }
-  })
+function ConstraintNode({ constraint, index, total }: ConstraintNodeProps) {
+  const typeColor = TYPE_COLOR[constraint.type] ?? '#a78bfa'
+  const nodePos = getNodePosition(index, total)
 
   return (
-    <Sphere args={[0.1, 8, 8]} ref={meshRef}>
-      <meshStandardMaterial
-        color={color}
-        emissive={color}
-        emissiveIntensity={active ? 2.5 : 0.3}
+    <group>
+      {/* Glowing sphere */}
+      <Sphere args={[0.12, 12, 12]} position={nodePos}>
+        <meshStandardMaterial
+          color={typeColor}
+          emissive={typeColor}
+          emissiveIntensity={1.2}
+          metalness={0.5}
+        />
+      </Sphere>
+
+      {/* Beam from node → core */}
+      <Line
+        points={[nodePos, [0, 0, 0]]}
+        color={typeColor}
+        lineWidth={1.5}
         transparent
-        opacity={active ? 1.0 : 0.3}
+        opacity={0.6}
       />
-    </Sphere>
+
+      {/* HTML label */}
+      <Html position={nodePos} center distanceFactor={8}>
+        <div style={{
+          userSelect: 'none',
+          pointerEvents: 'none',
+          background: 'rgba(6,8,15,0.85)',
+          border: `1px solid ${typeColor}40`,
+          borderRadius: '6px',
+          padding: '4px 8px',
+          maxWidth: '120px',
+          backdropFilter: 'blur(4px)',
+        }}>
+          <div style={{
+            color: typeColor,
+            fontFamily: 'monospace',
+            fontSize: '9px',
+            fontWeight: 'bold',
+            marginBottom: '2px',
+          }}>
+            {constraint.type}
+          </div>
+          <div style={{
+            color: '#cbd5e1',
+            fontFamily: 'monospace',
+            fontSize: '8px',
+            lineHeight: '1.3',
+          }}>
+            {getConstraintSummary(constraint)}
+          </div>
+        </div>
+      </Html>
+    </group>
   )
 }
 
-interface ConnectionBeamProps {
-  index: number
-  color: string
-  active: boolean
-}
+// ─── Idle Particle Cloud ──────────────────────────────────────────────────────
 
-function ConnectionBeam({ index, color, active }: ConnectionBeamProps) {
-  const lineRef = useRef<THREE.Line>(null)
-  const geomRef = useRef<THREE.BufferGeometry>(null)
-  const threeColor = useMemo(() => new THREE.Color(color), [color])
-
-  const lineObject = useMemo(() => {
-    const geo = new THREE.BufferGeometry()
-    const positions = new Float32Array([0, 0, 0, 0, 0, 0])
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-    const mat = new THREE.LineBasicMaterial({ color: threeColor, transparent: true, opacity: 0.7 })
-    return new THREE.Line(geo, mat)
-  }, [threeColor])
-
-  useFrame(() => {
-    if (!active) return
-    const pos = nodePositionStore[index]
-    const attr = lineObject.geometry.attributes.position as THREE.BufferAttribute
-    attr.setXYZ(0, pos.x, pos.y, pos.z)
-    attr.setXYZ(1, 0, 0, 0)
-    attr.needsUpdate = true
-  })
-
-  if (!active) return null
-
-  return <primitive object={lineObject} ref={lineRef} />
-}
-
-function ParticleCloud() {
+function IdleParticleCloud() {
   const pointsRef = useRef<THREE.Points>(null)
 
   const positions = useMemo(() => {
-    const count = 200
+    const count = 120
     const pos = new Float32Array(count * 3)
     for (let i = 0; i < count; i++) {
       const theta = Math.random() * Math.PI * 2
       const phi = Math.acos(2 * Math.random() - 1)
-      const r = 1.8 + Math.random() * 0.4
+      const r = 1.8
       pos[i * 3]     = r * Math.sin(phi) * Math.cos(theta)
       pos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta)
       pos[i * 3 + 2] = r * Math.cos(phi)
@@ -164,98 +211,90 @@ function ParticleCloud() {
   useFrame(({ clock }) => {
     if (pointsRef.current) {
       const t = clock.getElapsedTime()
-      pointsRef.current.rotation.y = t * 0.05
-      pointsRef.current.rotation.x = t * 0.02
+      pointsRef.current.rotation.y = t * 0.08
+      pointsRef.current.rotation.x = t * 0.03
     }
   })
 
   return (
     <Points ref={pointsRef} positions={positions}>
       <PointMaterial
-        color="#ffffff"
-        size={0.02}
+        color="#94a3b8"
+        size={0.018}
         transparent
-        opacity={0.6}
+        opacity={0.5}
         sizeAttenuation
       />
     </Points>
   )
 }
 
+// ─── Scene ────────────────────────────────────────────────────────────────────
+
 interface SceneProps {
   decision: DecisionState
-  reasonCodes: ReasonCode[]
+  speedKmh: number
+  activeConstraints: ActiveEvent[]
 }
 
-function Scene({ decision, reasonCodes }: SceneProps) {
+function Scene({ decision, speedKmh, activeConstraints }: SceneProps) {
   const decisionColor = DECISION_COLOR[decision] ?? '#22d3ee'
-
-  const activeFlags = useMemo(
-    () => SENSOR_NODES.map((node) =>
-      node.id === 'SYSTEM' ? true : node.codes.some((c) => reasonCodes.includes(c as ReasonCode))
-    ),
-    [reasonCodes]
-  )
 
   return (
     <>
-      <ambientLight intensity={0.15} />
-      <pointLight position={[3, 3, 3]} color={decisionColor} intensity={0.8} />
-      <pointLight position={[-3, -2, 2]} color="#ffffff" intensity={0.3} />
-      <pointLight position={[0, -3, -2]} color={decisionColor} intensity={0.5} />
-      <pointLight position={[2, 2, -3]} color="#6366f1" intensity={0.4} />
+      <ambientLight intensity={0.2} />
+      <pointLight position={[2, 2, 2]} color={decisionColor} intensity={0.8} />
+      <pointLight position={[-2, -1, -2]} color="#ffffff" intensity={0.4} />
 
-      <NeuralCore decisionColor={decisionColor} />
+      <DecisionCore
+        decisionColor={decisionColor}
+        decision={decision}
+        speedKmh={speedKmh}
+        activeConstraintsCount={activeConstraints.length}
+      />
 
-      {SENSOR_NODES.map((node, i) => (
-        <OrbitalNode
-          key={node.id}
-          index={i}
-          nodeColor={node.color}
-          active={activeFlags[i]}
-        />
-      ))}
-
-      {SENSOR_NODES.map((node, i) => (
-        <ConnectionBeam
-          key={`beam-${node.id}`}
-          index={i}
-          color={node.color}
-          active={activeFlags[i]}
-        />
-      ))}
-
-      <ParticleCloud />
+      {activeConstraints.length === 0 ? (
+        <IdleParticleCloud />
+      ) : (
+        activeConstraints.map((constraint, i) => (
+          <ConstraintNode
+            key={constraint.id}
+            constraint={constraint}
+            index={i}
+            total={activeConstraints.length}
+          />
+        ))
+      )}
 
       <EffectComposer>
-        <Bloom luminanceThreshold={0.2} intensity={1.5} mipmapBlur />
+        <Bloom luminanceThreshold={0.15} intensity={1.2} mipmapBlur />
       </EffectComposer>
     </>
   )
 }
 
+// ─── BrainCanvas (public export) ─────────────────────────────────────────────
+
 export interface BrainCanvasProps {
   decision: DecisionState
   reasonCodes: ReasonCode[]
   speedKmh: number
+  activeConstraints: ActiveEvent[]
 }
 
-export default function BrainCanvas({ decision, reasonCodes }: BrainCanvasProps) {
+export default function BrainCanvas({ decision, speedKmh, activeConstraints }: BrainCanvasProps) {
   return (
-    <div style={{ height: '260px', userSelect: 'none' }}>
-      <Canvas
-        camera={{ position: [0, 0, 3.5], fov: 60 }}
-        style={{ background: 'transparent' }}
-        gl={{ alpha: true, antialias: true }}
-      >
-        <OrbitControls
-          autoRotate
-          autoRotateSpeed={0.5}
-          enableZoom={false}
-          enablePan={false}
-        />
-        <Scene decision={decision} reasonCodes={reasonCodes} />
-      </Canvas>
-    </div>
+    <Canvas
+      style={{ height: '260px', background: 'transparent', userSelect: 'none' }}
+      camera={{ position: [0, 1.5, 4], fov: 50 }}
+      gl={{ alpha: true, antialias: true }}
+    >
+      <OrbitControls autoRotate autoRotateSpeed={0.4} enableZoom={false} enablePan={false} />
+      <Scene
+        decision={decision}
+        speedKmh={speedKmh}
+        activeConstraints={activeConstraints}
+      />
+    </Canvas>
   )
 }

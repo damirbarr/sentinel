@@ -58,6 +58,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
           decision={vehicle.decision}
           reasonCodes={vehicle.reasonCodes}
           speedKmh={vehicle.speedKmh}
+          activeConstraints={activeConstraints}
         />
       </div>
 
