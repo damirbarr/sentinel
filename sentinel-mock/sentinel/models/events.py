@@ -38,6 +38,7 @@ class ActiveConstraint:
     type: Literal['WEATHER', 'GEOFENCE', 'NETWORK']
     payload: WeatherPayload | GeofencePayload | NetworkPayload
     createdAt: str
+    clearedAt: Optional[str] = None
     active: bool = True
 
 
@@ -71,5 +72,6 @@ def parse_constraint(data: dict) -> ActiveConstraint:
         type=t,  # type: ignore[arg-type]
         payload=payload,
         createdAt=data['createdAt'],
+        clearedAt=data.get('clearedAt'),
         active=data.get('active', True),
     )
