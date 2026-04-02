@@ -1,6 +1,6 @@
 import { useVehiclesStore } from '../../store/vehicles.store'
 import { useEventsStore } from '../../store/events.store'
-import DigitalBrain from './DigitalBrain'
+import BrainCanvas from './BrainCanvas'
 import type { DecisionState } from '../../types'
 
 const DECISION_COLOR: Record<DecisionState, string> = {
@@ -24,6 +24,20 @@ const REASON_META: Record<string, { label: string; color: string }> = {
   MULTI_FACTOR_RISK:          { label: 'Multi-Risk',    color: 'text-violet-400 bg-violet-400/10 border-violet-400/20' },
 }
 
+const REASON_DESCRIPTIONS: Record<string, string> = {
+  WEATHER_HEAVY_RAIN:         'Heavy precipitation reducing traction and visibility',
+  WEATHER_FOG:                'Dense fog limiting sensor range',
+  WEATHER_STRONG_WIND:        'High wind speeds affecting vehicle stability',
+  WEATHER_LOW_VISIBILITY:     'Visibility below safe operating threshold',
+  IN_GEOFENCE_FORBIDDEN_ZONE: 'Vehicle is inside a forbidden no-go zone',
+  IN_GEOFENCE_CAUTION_ZONE:   'Vehicle is inside a caution zone — proceed carefully',
+  IN_GEOFENCE_SLOW_ZONE:      'Vehicle is inside a speed-restricted zone',
+  GEOFENCE_AHEAD:             'A geofence boundary detected ahead',
+  NETWORK_POOR:               'Degraded uplink — telemetry may be delayed',
+  NETWORK_LOST:               'No network connectivity — autonomous fallback active',
+  MULTI_FACTOR_RISK:          'Multiple simultaneous risk factors detected',
+}
+
 export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
   const vehicle = useVehiclesStore((s) => s.vehicles[vehicleId])
   const events = useEventsStore((s) => s.events)
@@ -34,13 +48,13 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
     .filter(Boolean)
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-4 select-none" style={{ userSelect: 'none' }}>
       {/* Brain visualization */}
-      <div className="flex flex-col items-center pt-2">
+      <div className="flex flex-col items-center pt-2" style={{ userSelect: 'none' }}>
         <p className="text-[10px] font-semibold tracking-[0.2em] text-slate-500 uppercase mb-3">
           Sentinel Cognition
         </p>
-        <DigitalBrain
+        <BrainCanvas
           decision={vehicle.decision}
           reasonCodes={vehicle.reasonCodes}
           speedKmh={vehicle.speedKmh}
@@ -48,13 +62,13 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
       </div>
 
       {/* Decision state card */}
-      <div className={`rounded-xl border p-3 ${DECISION_COLOR[vehicle.decision]}`}>
+      <div className={`rounded-xl border p-3 ${DECISION_COLOR[vehicle.decision]}`} style={{ userSelect: 'none' }}>
         <p className="text-[10px] font-semibold uppercase tracking-widest opacity-60 mb-1">Current Decision</p>
         <p className="font-mono font-bold text-sm">{vehicle.decision.replace(/_/g, ' ')}</p>
       </div>
 
       {/* Telemetry grid */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2" style={{ userSelect: 'none' }}>
         {[
           { label: 'Speed', value: `${vehicle.speedKmh.toFixed(0)} km/h` },
           { label: 'Heading', value: `${vehicle.position.heading.toFixed(0)}°` },
@@ -70,17 +84,22 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
 
       {/* Active signals */}
       {vehicle.reasonCodes.length > 0 && (
-        <div>
+        <div style={{ userSelect: 'none' }}>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Active Signals</p>
           <div className="flex flex-wrap gap-1.5">
             {vehicle.reasonCodes.map((code) => {
               const meta = REASON_META[code] ?? { label: code, color: 'text-slate-400 bg-slate-400/10 border-slate-400/20' }
               return (
-                <span key={code}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${meta.color}`}>
-                  <span className="w-1 h-1 rounded-full bg-current" />
-                  {meta.label}
-                </span>
+                <div key={code} className="relative group">
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${meta.color}`}>
+                    <span className="w-1 h-1 rounded-full bg-current" />
+                    {meta.label}
+                  </span>
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                    {REASON_DESCRIPTIONS[code] ?? code}
+                  </div>
+                </div>
               )
             })}
           </div>
@@ -89,7 +108,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
 
       {/* Affecting constraints */}
       {activeConstraints.length > 0 && (
-        <div>
+        <div style={{ userSelect: 'none' }}>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Constraint Feed</p>
           <div className="space-y-1.5">
             {activeConstraints.map((event) => (
