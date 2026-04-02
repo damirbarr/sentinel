@@ -6,8 +6,8 @@
   *, *::before, *::after { box-sizing: border-box; }
   html, body, #root { height: 100%; margin: 0; padding: 0; }
   body {
-    background-color: #0f1117;
-    color: #e2e8f0;
+    background-color: #06080f;
+    color: #cbd5e1;
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
@@ -17,11 +17,11 @@
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: #2a3347 transparent;
+    scrollbar-color: #1c2740 transparent;
   }
   .scrollbar-thin::-webkit-scrollbar { width: 4px; }
   .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-  .scrollbar-thin::-webkit-scrollbar-thumb { background: #2a3347; border-radius: 2px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #1c2740; border-radius: 2px; }
 }
 
 @keyframes spin-slow {
@@ -40,3 +40,50 @@
 .animate-spin-slow         { animation: spin-slow 12s linear infinite; transform-origin: 150px 150px; }
 .animate-spin-slow-reverse { animation: spin-slow-reverse 8s linear infinite; transform-origin: 150px 150px; }
 .animate-signal-flow       { animation: signal-flow 2s ease-in-out infinite; }
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #38bdf8, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glowing border utility */
+.border-glow-cyan {
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.3), 0 0 12px rgba(34, 211, 238, 0.1);
+}
+.border-glow-amber {
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.3), 0 0 12px rgba(251, 191, 36, 0.1);
+}
+.border-glow-red {
+  box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.3), 0 0 12px rgba(248, 113, 113, 0.1);
+}
+
+/* Panel gradient overlays */
+.panel-gradient {
+  background: linear-gradient(180deg, #0b0f1c 0%, #06080f 100%);
+}
+
+/* Animated live dot */
+@keyframes ping-subtle {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+}
+.animate-ping-subtle { animation: ping-subtle 2s ease-in-out infinite; }
+
+/* Scanline overlay for sci-fi feel — subtle */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}

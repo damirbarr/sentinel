@@ -4,19 +4,35 @@ import { useUIStore } from '../../store/ui.store'
 import type { VehicleStatus } from '../../types'
 
 const DECISION_COLORS: Record<string, string> = {
-  NORMAL: '#10b981',
-  DEGRADED_SPEED: '#f59e0b',
-  SAFE_STOP_RECOMMENDED: '#ef4444',
-  REROUTE_RECOMMENDED: '#8b5cf6',
+  NORMAL: '#34d399',
+  DEGRADED_SPEED: '#fbbf24',
+  SAFE_STOP_RECOMMENDED: '#f87171',
+  REROUTE_RECOMMENDED: '#fb923c',
 }
 
-function vehicleIcon(decision: string, connected: boolean, heading: number): L.DivIcon {
-  const color = connected ? (DECISION_COLORS[decision] ?? '#3b82f6') : '#4b5563'
-  const svg = `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style="transform:rotate(${heading}deg);transform-origin:center">
-    <circle cx="16" cy="16" r="13" fill="${color}22" stroke="${color}" stroke-width="2"/>
-    <path d="M16 8 L20 22 L16 19 L12 22 Z" fill="${color}"/>
+function vehicleIcon(decision: string, connected: boolean, heading: number, isSelected: boolean): L.DivIcon {
+  const color = connected ? (DECISION_COLORS[decision] ?? '#38bdf8') : '#4b5563'
+  const size = isSelected ? 40 : 34
+
+  // Drop shadow / glow filter
+  const filterId = `glow-${decision.toLowerCase().replace(/_/g, '-')}`
+  const selectionRing = isSelected
+    ? `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" stroke="${color}" stroke-width="1.5" stroke-dasharray="3 2" fill="none" opacity="0.6" class="animate-ping"/>`
+    : ''
+
+  const svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" fill="none" xmlns="http://www.w3.org/2000/svg"
+    style="transform:rotate(${heading}deg);transform-origin:center;filter:drop-shadow(0 0 6px ${color}88)">
+    <defs>
+      <filter id="${filterId}" x="-50%" y="-50%" width="200%" height="200%">
+        <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="${color}" flood-opacity="0.5"/>
+      </filter>
+    </defs>
+    ${isSelected ? `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 1}" stroke="${color}" stroke-width="1" fill="none" opacity="0.3"/>` : ''}
+    <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 4}" fill="${color}22" stroke="${color}" stroke-width="2" filter="url(#${filterId})"/>
+    <path d="M${size / 2} ${size / 2 - 9} L${size / 2 + 5} ${size / 2 + 7} L${size / 2} ${size / 2 + 4} L${size / 2 - 5} ${size / 2 + 7} Z" fill="${color}" filter="url(#${filterId})"/>
   </svg>`
-  return L.divIcon({ html: svg, className: '', iconSize: [32, 32], iconAnchor: [16, 16] })
+
+  return L.divIcon({ html: svg, className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2] })
 }
 
 export default function VehicleMarker({ vehicle }: { vehicle: VehicleStatus }) {
@@ -25,13 +41,13 @@ export default function VehicleMarker({ vehicle }: { vehicle: VehicleStatus }) {
   return (
     <Marker
       position={[vehicle.position.lat, vehicle.position.lng]}
-      icon={vehicleIcon(vehicle.decision, vehicle.connected, vehicle.position.heading)}
+      icon={vehicleIcon(vehicle.decision, vehicle.connected, vehicle.position.heading, isSelected)}
       eventHandlers={{ click: () => setSelectedVehicle(isSelected ? null : vehicle.vehicleId) }}
     >
-      <Tooltip permanent={isSelected} direction="top" offset={[0, -18]}>
+      <Tooltip permanent={isSelected} direction="top" offset={[0, -20]}>
         <div className="text-xs">
-          <div className="font-medium font-mono">{vehicle.vehicleId}</div>
-          <div className="text-slate-400">{vehicle.speedKmh.toFixed(0)} km/h</div>
+          <div className="font-bold font-mono text-white">{vehicle.vehicleId}</div>
+          <div className="text-slate-400 font-mono">{vehicle.speedKmh.toFixed(0)} km/h</div>
         </div>
       </Tooltip>
     </Marker>
