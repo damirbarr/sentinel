@@ -1,7 +1,6 @@
 import { useVehiclesStore } from '../../store/vehicles.store'
 import { useEventsStore } from '../../store/events.store'
 import BrainCanvas from './BrainCanvas'
-import CommandPanel from './CommandPanel'
 import type { DecisionState } from '../../types'
 
 const DECISION_COLOR: Record<DecisionState, string> = {
@@ -131,10 +130,6 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
           </div>
         </div>
       )}
-
-      <div className="border-t border-surface-border pt-4">
-        <CommandPanel vehicleId={vehicleId} />
-      </div>
 
       <p className="text-[10px] text-slate-500 text-center">
         Updated {new Date(vehicle.lastSeenAt).toLocaleTimeString()}

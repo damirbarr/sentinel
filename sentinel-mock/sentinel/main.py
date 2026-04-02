@@ -13,6 +13,65 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(na
 logger = logging.getLogger(__name__)
 
 
+async def interactive_console(vehicle_id: str, reporter) -> None:
+    import sys
+    loop = asyncio.get_event_loop()
+
+    def _input(prompt: str) -> str:
+        sys.stdout.write(prompt)
+        sys.stdout.flush()
+        return sys.stdin.readline().rstrip('\n')
+
+    print(f'\n  [{vehicle_id}] Sentinel interactive console ready.')
+    print(f'  Press Enter or type a number to simulate a condition.\n')
+
+    MENU = (
+        f'\n  ┌─ {vehicle_id} ──────────────────────────┐\n'
+        '  │  1. Perception Alarm               │\n'
+        '  │  2. Network Degraded               │\n'
+        '  │  3. Network Lost                   │\n'
+        '  │  4. Obstacle Detected (STOP)        │\n'
+        '  │  5. Sensor Fault                   │\n'
+        '  │  6. Clear All Simulations          │\n'
+        '  └────────────────────────────────────┘\n'
+        '  > '
+    )
+
+    while True:
+        try:
+            choice = await loop.run_in_executor(None, lambda: _input(MENU))
+            choice = choice.strip()
+
+            if choice == '1':
+                msg = await loop.run_in_executor(None, lambda: _input('  Perception message (Enter for default): '))
+                await reporter._handle_command('SIMULATE_PERCEPTION_ALARM', {'message': msg or 'Perception fault detected'})
+                print(f'  ↑ [{vehicle_id}] Perception alarm sent.')
+            elif choice == '2':
+                await reporter._handle_command('SIMULATE_NETWORK_DEGRADED', {})
+                print(f'  ↑ [{vehicle_id}] Network degraded.')
+            elif choice == '3':
+                await reporter._handle_command('SIMULATE_NETWORK_LOST', {})
+                print(f'  ↑ [{vehicle_id}] Network lost → SAFE STOP.')
+            elif choice == '4':
+                await reporter._handle_command('SIMULATE_OBSTACLE_DETECTED', {})
+                print(f'  ↑ [{vehicle_id}] OBSTACLE DETECTED → emergency stop.')
+            elif choice == '5':
+                desc = await loop.run_in_executor(None, lambda: _input('  Fault description (Enter for default): '))
+                await reporter._handle_command('SIMULATE_SENSOR_FAULT', {'description': desc or 'Sensor malfunction'})
+                print(f'  ↑ [{vehicle_id}] Sensor fault reported.')
+            elif choice == '6':
+                await reporter._handle_command('CLEAR_SIMULATION', {})
+                print(f'  ↑ [{vehicle_id}] All simulations cleared.')
+            elif choice == '':
+                pass  # just redraw menu
+            else:
+                print(f'  Invalid choice: {choice!r}')
+        except (EOFError, KeyboardInterrupt):
+            break
+        except Exception as e:
+            logger.error(f'Interactive console error: {e}')
+
+
 async def run(config) -> None:
     state = VehicleState(
         vehicle_id=config.vehicle_id,
@@ -39,7 +98,12 @@ async def run(config) -> None:
     await asyncio.sleep(1.0)
     await reporter.register()
 
-    await asyncio.gather(connect_task, simulator.run(), reporter.run_periodic_reporting())
+    await asyncio.gather(
+        connect_task,
+        simulator.run(),
+        reporter.run_periodic_reporting(),
+        interactive_console(config.vehicle_id, reporter),
+    )
 
 
 def main() -> None:

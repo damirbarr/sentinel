@@ -1,4 +1,4 @@
-.PHONY: install dev frontend backend mock mock-2 test test-backend test-mock clean venv-setup venv-check
+.PHONY: install dev frontend backend mock mock-2 mock-simulator test test-backend test-mock clean venv-setup venv-check
 
 # ── Config ────────────────────────────────────────────────────────────────────
 VEHICLE_ID   ?= vehicle-001
@@ -56,6 +56,10 @@ mock-2: venv-check
 	$(MAKE) -j2 \
 		"mock VEHICLE_ID=vehicle-001 START_LAT=37.7749 START_LNG=-122.4194" \
 		"mock VEHICLE_ID=vehicle-002 START_LAT=37.7849 START_LNG=-122.4094"
+
+mock-simulator:
+	@echo "Mock Simulator UI: http://localhost:3001/mock-simulator"
+	@echo "(Start the backend first with 'make dev')"
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 test: test-backend test-mock
