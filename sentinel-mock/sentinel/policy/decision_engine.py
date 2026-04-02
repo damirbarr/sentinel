@@ -1,4 +1,5 @@
 from __future__ import annotations
+import math
 from sentinel.models.events import ActiveConstraint, WeatherPayload, GeofencePayload, NetworkPayload, LatLng
 from sentinel.policy.reason_codes import ReasonCode
 
@@ -20,7 +21,21 @@ def _point_in_polygon(lat: float, lng: float, polygon: list[LatLng]) -> bool:
     return inside
 
 
-def _eval_weather(p: WeatherPayload) -> tuple[DecisionState, list[str]]:
+def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    R = 6_371_000.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlam = math.radians(lng2 - lng1)
+    a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlam/2)**2
+    return R * 2 * math.asin(math.sqrt(a))
+
+
+def _eval_weather(p: WeatherPayload, lat: float, lng: float) -> tuple[DecisionState, list[str]]:
+    # If weather has a geographic zone, check if vehicle is inside
+    if hasattr(p, 'center') and p.center is not None and hasattr(p, 'radiusMeters') and p.radiusMeters:
+        dist = _haversine_m(lat, lng, p.center.lat, p.center.lng)
+        if dist > p.radiusMeters:
+            return 'NORMAL', []  # vehicle outside weather zone
     code_map = {
         'HEAVY_RAIN': ReasonCode.WEATHER_HEAVY_RAIN,
         'FOG': ReasonCode.WEATHER_FOG,
@@ -65,7 +80,7 @@ class DecisionEngine:
             if not c.active:
                 continue
             if c.type == 'WEATHER':
-                d, cc = _eval_weather(c.payload)  # type: ignore[arg-type]
+                d, cc = _eval_weather(c.payload, lat, lng)  # type: ignore[arg-type]
             elif c.type == 'GEOFENCE':
                 d, cc = _eval_geofence(c.payload, lat, lng)  # type: ignore[arg-type]
             elif c.type == 'NETWORK':

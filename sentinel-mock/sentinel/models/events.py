@@ -15,6 +15,8 @@ class WeatherPayload:
     severity: Literal['LOW', 'MODERATE', 'HIGH', 'EXTREME']
     durationMinutes: Optional[int] = None
     description: Optional[str] = None
+    center: Optional[LatLng] = None
+    radiusMeters: Optional[float] = None
 
 
 @dataclass
@@ -47,11 +49,15 @@ def parse_constraint(data: dict) -> ActiveConstraint:
     t = data['type']
     p = data['payload']
     if t == 'WEATHER':
+        raw_center = p.get('center')
+        center = LatLng(lat=raw_center['lat'], lng=raw_center['lng']) if raw_center else None
         payload: WeatherPayload | GeofencePayload | NetworkPayload = WeatherPayload(
             condition=p['condition'],
             severity=p['severity'],
             durationMinutes=p.get('durationMinutes'),
             description=p.get('description'),
+            center=center,
+            radiusMeters=p.get('radiusMeters'),
         )
     elif t == 'GEOFENCE':
         polygon = [LatLng(lat=c['lat'], lng=c['lng']) for c in p.get('polygon', [])]

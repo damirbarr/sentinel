@@ -16,6 +16,8 @@ export const WeatherPayloadSchema = z.object({
   severity: WeatherSeverity,
   durationMinutes: z.number().int().positive().optional(),
   description: z.string().optional(),
+  center: LatLngSchema.optional(),
+  radiusMeters: z.number().min(1000).optional(),
 })
 
 export const GeofencePayloadSchema = z.object({

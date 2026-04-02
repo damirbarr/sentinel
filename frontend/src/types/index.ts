@@ -51,6 +51,8 @@ export interface WeatherPayload {
   severity: WeatherSeverity
   durationMinutes?: number
   description?: string
+  center?: LatLng
+  radiusMeters?: number
 }
 
 export interface GeofencePayload {

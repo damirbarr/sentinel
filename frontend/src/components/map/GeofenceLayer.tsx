@@ -1,6 +1,6 @@
-import { Polygon, Tooltip } from 'react-leaflet'
+import { Polygon, Tooltip, Circle } from 'react-leaflet'
 import { useEventsStore } from '../../store/events.store'
-import type { GeofencePayload } from '../../types'
+import type { GeofencePayload, WeatherPayload } from '../../types'
 
 const STYLES: Record<string, { color: string; fillColor: string; fillOpacity: number }> = {
   FORBIDDEN: { color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.12 },
@@ -30,6 +30,34 @@ export default function GeofenceLayer() {
                 </div>
               </Tooltip>
             </Polygon>
+          )
+        })}
+      {Object.values(events)
+        .filter((e) => e.type === 'WEATHER' && e.active)
+        .map((event) => {
+          const p = event.payload as WeatherPayload
+          if (!p.center || !p.radiusMeters) return null
+          return (
+            <Circle
+              key={event.id}
+              center={[p.center.lat, p.center.lng]}
+              radius={p.radiusMeters}
+              pathOptions={{
+                color: '#f59e0b',
+                fillColor: '#f59e0b',
+                fillOpacity: 0.08,
+                weight: 1.5,
+                dashArray: '4 6',
+              }}
+            >
+              <Tooltip sticky>
+                <div className="text-xs">
+                  <div className="font-medium">WEATHER ZONE</div>
+                  <div className="text-slate-400">{p.condition.replace('_', ' ')} · {p.severity}</div>
+                  <div className="text-slate-400">{(p.radiusMeters / 1000).toFixed(1)} km radius</div>
+                </div>
+              </Tooltip>
+            </Circle>
           )
         })}
     </>
