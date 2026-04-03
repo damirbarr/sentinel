@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState, useEffect } from 'react'
+import React, { useRef, useMemo, useState, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Trail, Points, PointMaterial } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
@@ -143,7 +143,7 @@ function ElectronOrbit({ nodeId, color, targetStability, affecting, isPaused, on
   const colorObj = useMemo(() => new THREE.Color(color), [color])
 
   const trailWidth  = affecting ? 0.04 : 0.01
-  const trailLength = affecting ? 16   : 6
+  const trailLength = affecting ? 48   : 18
   const elecOpacity = affecting ? 1.0  : 0.15
   const elecEmit    = affecting ? 1.4  : 0.2
   const elecR       = affecting ? 0.08 : 0.04
@@ -192,14 +192,9 @@ function ElectronOrbit({ nodeId, color, targetStability, affecting, isPaused, on
   })
 
   return (
-    <group ref={groupRef}>
-      <Trail
-        width={trailWidth}
-        length={trailLength}
-        color={color}
-        attenuation={(t) => t * t}
-        decay={1}
-      >
+    <>
+      {/* Rotating orbital plane — electron lives here so position is in orbit-plane local space */}
+      <group ref={groupRef}>
         <mesh
           ref={electronRef}
           onPointerOver={(e) => { e.stopPropagation(); onHover(hoverInfo) }}
@@ -215,8 +210,17 @@ function ElectronOrbit({ nodeId, color, targetStability, affecting, isPaused, on
             opacity={elecOpacity}
           />
         </mesh>
-      </Trail>
-    </group>
+      </group>
+      {/* Trail lives OUTSIDE the rotating group so it renders in world space correctly */}
+      <Trail
+        target={electronRef as unknown as React.RefObject<THREE.Object3D>}
+        width={trailWidth}
+        length={trailLength}
+        color={color}
+        attenuation={(t) => t * t}
+        decay={1}
+      />
+    </>
   )
 }
 
