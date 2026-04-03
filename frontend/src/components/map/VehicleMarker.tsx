@@ -36,7 +36,7 @@ function vehicleIcon(decision: string, connected: boolean, heading: number, isSe
   return L.divIcon({ html: svg, className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2] })
 }
 
-const INTERP_MS = 900 // slightly less than 1s report interval
+const INTERP_MS = 1800 // slightly less than 2s report interval
 
 export default function VehicleMarker({ vehicle }: { vehicle: VehicleStatus }) {
   const { setSelectedVehicle, selectedVehicleId } = useUIStore()

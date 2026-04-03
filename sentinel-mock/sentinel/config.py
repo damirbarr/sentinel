@@ -27,7 +27,7 @@ def parse_config() -> SentinelConfig:
     parser = argparse.ArgumentParser(description='Sentinel Mock Vehicle')
     parser.add_argument('--vehicle-id', required=True, help='Unique vehicle ID')
     parser.add_argument('--backend-url', default='ws://localhost:3001/ws/sentinels')
-    parser.add_argument('--status-interval', type=float, default=1.0)
+    parser.add_argument('--status-interval', type=float, default=2.0)
     parser.add_argument('--lat', type=float, default=37.7749)
     parser.add_argument('--lng', type=float, default=-122.4194)
     parser.add_argument('--max-constraint-distance', type=float, default=1.0,
