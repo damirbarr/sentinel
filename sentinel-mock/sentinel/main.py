@@ -129,16 +129,20 @@ async def run(config) -> None:
     await asyncio.sleep(1.0)
     await reporter.register()
 
+    tasks = [
+        connect_task,
+        asyncio.create_task(simulator.run()),
+        asyncio.create_task(reporter.run_periodic_reporting()),
+        asyncio.create_task(interactive_console(config.vehicle_id, reporter, stop_event)),
+    ]
+
     try:
-        await asyncio.gather(
-            connect_task,
-            simulator.run(),
-            reporter.run_periodic_reporting(),
-            interactive_console(config.vehicle_id, reporter, stop_event),
-        )
-    except asyncio.CancelledError:
-        pass
+        # Block until SIGINT/SIGTERM sets the stop event
+        await stop_event.wait()
     finally:
+        for t in tasks:
+            t.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
         loop.remove_signal_handler(signal.SIGINT)
         loop.remove_signal_handler(signal.SIGTERM)
 
