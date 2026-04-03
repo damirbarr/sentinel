@@ -16,6 +16,7 @@ interface UIState {
   settingMaxConstraintDistance: number
   settingSpeedDegradationPct: number
   settingAutoRotateBrain: boolean
+  followingVehicleId: string | null
   setSelectedVehicle: (id: string | null) => void
   setTimelineOpen: (open: boolean) => void
   setDrawingGeofence: (drawing: boolean) => void
@@ -30,6 +31,7 @@ interface UIState {
   setSettingMaxConstraintDistance: (v: number) => void
   setSettingSpeedDegradationPct: (v: number) => void
   setSettingAutoRotateBrain: (v: boolean) => void
+  setFollowingVehicle: (id: string | null) => void
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -47,6 +49,7 @@ export const useUIStore = create<UIState>((set) => ({
   settingMaxConstraintDistance: 0,
   settingSpeedDegradationPct: 25,
   settingAutoRotateBrain: true,
+  followingVehicleId: null,
   setSelectedVehicle: (id) => set({ selectedVehicleId: id }),
   setTimelineOpen: (open) => set({ timelineOpen: open }),
   setDrawingGeofence: (drawing) => set({ isDrawingGeofence: drawing }),
@@ -61,4 +64,5 @@ export const useUIStore = create<UIState>((set) => ({
   setSettingMaxConstraintDistance: (v) => set({ settingMaxConstraintDistance: v }),
   setSettingSpeedDegradationPct: (v) => set({ settingSpeedDegradationPct: v }),
   setSettingAutoRotateBrain: (v) => set({ settingAutoRotateBrain: v }),
+  setFollowingVehicle: (id) => set({ followingVehicleId: id }),
 }))

@@ -77,6 +77,28 @@ function FlyToHandler() {
   return null
 }
 
+function VehicleFollowHandler() {
+  const map = useMap()
+  const followingVehicleId = useUIStore((s) => s.followingVehicleId)
+  const setFollowingVehicle = useUIStore((s) => s.setFollowingVehicle)
+  const vehicle = useVehiclesStore((s) => followingVehicleId ? s.vehicles[followingVehicleId] : null)
+
+  // Stop following on manual drag
+  useEffect(() => {
+    const stop = () => setFollowingVehicle(null)
+    map.on('dragstart', stop)
+    return () => { map.off('dragstart', stop) }
+  }, [map, setFollowingVehicle])
+
+  // Pan to followed vehicle on position update
+  useEffect(() => {
+    if (!vehicle) return
+    map.panTo([vehicle.position.lat, vehicle.position.lng], { animate: true, duration: 0.5 })
+  }, [vehicle?.position.lat, vehicle?.position.lng, map])
+
+  return null
+}
+
 export default function MapCanvas() {
   const vehicles = useVehiclesStore((s) => s.vehicles)
   const { isDrawingGeofence, isPlacingWeather } = useUIStore()
@@ -93,6 +115,7 @@ export default function MapCanvas() {
         {isDrawingGeofence && <GeofenceDrawer />}
         <WeatherPlacementClickHandler />
         <FlyToHandler />
+        <VehicleFollowHandler />
       </MapContainer>
       {isDrawingGeofence && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] px-3 py-1.5 rounded-full bg-black/70 border border-sky-400/50 text-xs text-sky-300 font-medium pointer-events-none">

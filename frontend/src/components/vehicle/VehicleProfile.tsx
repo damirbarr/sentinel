@@ -3,7 +3,26 @@ import { createPortal } from 'react-dom'
 import { useVehiclesStore } from '../../store/vehicles.store'
 import { useEventsStore } from '../../store/events.store'
 import BrainCanvas from './BrainCanvas'
-import type { DecisionState } from '../../types'
+import type { DecisionState, ActiveEvent, WeatherPayload, GeofencePayload, NetworkPayload } from '../../types'
+
+function typeClass(type: string) {
+  if (type === 'WEATHER') return 'bg-amber-400/20 text-amber-400'
+  if (type === 'GEOFENCE') return 'bg-red-400/20 text-red-400'
+  return 'bg-orange-400/20 text-orange-400'
+}
+
+function constraintLabel(event: ActiveEvent): string {
+  if (event.type === 'WEATHER') {
+    const p = event.payload as WeatherPayload
+    return `${p.condition.replace(/_/g, ' ')} · ${p.severity}`
+  }
+  if (event.type === 'GEOFENCE') {
+    const p = event.payload as GeofencePayload
+    return `${p.type}${p.label ? ` · ${p.label}` : ''}`
+  }
+  const p = event.payload as NetworkPayload
+  return `${p.severity}${p.vehicleId ? ` · ${p.vehicleId}` : ' · global'}`
+}
 
 const DECISION_COLOR: Record<DecisionState, string> = {
   NORMAL: 'text-cyan-300 border-cyan-400/50 bg-cyan-400/15',
@@ -99,6 +118,13 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
     .map((id) => events[id])
     .filter(Boolean)
 
+  const affectingConstraints = activeConstraints.filter(e =>
+    (vehicle.affectingConstraintIds ?? []).includes(e.id)
+  )
+  const nearbyConstraints = activeConstraints.filter(e =>
+    !(vehicle.affectingConstraintIds ?? []).includes(e.id)
+  )
+
   if (fullscreen) {
     return (
       <div className="fixed inset-0 z-[2000] bg-surface flex flex-col" style={{ userSelect: 'none' }}>
@@ -148,19 +174,30 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
               </div>
             )}
 
-            {/* Constraint feed */}
-            {activeConstraints.length > 0 && (
+            {/* Actively Affecting */}
+            {affectingConstraints.length > 0 && (
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-300 mb-2">Constraint Feed</p>
-                <div className="space-y-1.5">
-                  {activeConstraints.map((event) => (
-                    <div key={event.id} className="flex items-center gap-2 p-2 rounded-lg bg-surface-2 border border-surface-border">
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                        event.type === 'WEATHER' ? 'bg-amber-400/20 text-amber-400' :
-                        event.type === 'GEOFENCE' ? 'bg-red-400/20 text-red-400' :
-                        'bg-orange-400/20 text-orange-400'
-                      }`}>{event.type}</span>
-                      <span className="text-[10px] font-mono text-slate-300 truncate">{event.id.slice(0, 12)}…</span>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-red-400/80 mb-2">⚡ Actively Affecting</p>
+                <div className="space-y-1">
+                  {affectingConstraints.map((event) => (
+                    <div key={event.id} className="flex items-center gap-2 p-2 rounded bg-red-400/5 border border-red-400/20">
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${typeClass(event.type)}`}>{event.type}</span>
+                      <span className="text-[10px] font-mono text-slate-200 truncate">{constraintLabel(event)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Nearby / Potential */}
+            {nearbyConstraints.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">◎ Nearby (not affecting)</p>
+                <div className="space-y-1">
+                  {nearbyConstraints.map((event) => (
+                    <div key={event.id} className="flex items-center gap-2 p-2 rounded bg-surface-2 border border-surface-border opacity-60">
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold opacity-60 ${typeClass(event.type)}`}>{event.type}</span>
+                      <span className="text-[10px] font-mono text-slate-400 truncate">{constraintLabel(event)}</span>
                     </div>
                   ))}
                 </div>
@@ -234,19 +271,30 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
         </div>
       )}
 
-      {/* Affecting constraints */}
-      {activeConstraints.length > 0 && (
+      {/* Actively Affecting */}
+      {affectingConstraints.length > 0 && (
         <div style={{ userSelect: 'none' }}>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-300 mb-2">Constraint Feed</p>
-          <div className="space-y-1.5">
-            {activeConstraints.map((event) => (
-              <div key={event.id} className="flex items-center gap-2 p-2 rounded-lg bg-surface-2 border border-surface-border">
-                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                  event.type === 'WEATHER' ? 'bg-amber-400/20 text-amber-400' :
-                  event.type === 'GEOFENCE' ? 'bg-red-400/20 text-red-400' :
-                  'bg-orange-400/20 text-orange-400'
-                }`}>{event.type}</span>
-                <span className="text-[10px] font-mono text-slate-300 truncate">{event.id.slice(0, 12)}…</span>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-red-400/80 mb-2">⚡ Actively Affecting</p>
+          <div className="space-y-1">
+            {affectingConstraints.map((event) => (
+              <div key={event.id} className="flex items-center gap-2 p-2 rounded bg-red-400/5 border border-red-400/20">
+                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${typeClass(event.type)}`}>{event.type}</span>
+                <span className="text-[10px] font-mono text-slate-200 truncate">{constraintLabel(event)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Nearby / Potential */}
+      {nearbyConstraints.length > 0 && (
+        <div style={{ userSelect: 'none' }}>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">◎ Nearby (not affecting)</p>
+          <div className="space-y-1">
+            {nearbyConstraints.map((event) => (
+              <div key={event.id} className="flex items-center gap-2 p-2 rounded bg-surface-2 border border-surface-border opacity-60">
+                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold opacity-60 ${typeClass(event.type)}`}>{event.type}</span>
+                <span className="text-[10px] font-mono text-slate-400 truncate">{constraintLabel(event)}</span>
               </div>
             ))}
           </div>
