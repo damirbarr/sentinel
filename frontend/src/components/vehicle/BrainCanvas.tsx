@@ -5,6 +5,7 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { ActiveEvent, DecisionState, ReasonCode, WeatherPayload, GeofencePayload, NetworkPayload } from '../../types'
+import WeatherParticles from './WeatherParticles'
 
 const DECISION_COLOR: Record<string, string> = {
   NORMAL: '#22d3ee',
@@ -297,9 +298,10 @@ export interface BrainCanvasProps {
   affectingConstraintIds?: string[]
   fullscreen?: boolean
   autoRotate?: boolean
+  weatherConditions?: string[]
 }
 
-export default function BrainCanvas({ decision, reasonCodes, speedKmh, activeConstraints, affectingConstraintIds = [], fullscreen, autoRotate = true }: BrainCanvasProps) {
+export default function BrainCanvas({ decision, reasonCodes, speedKmh, activeConstraints, affectingConstraintIds = [], fullscreen, autoRotate = true, weatherConditions = [] }: BrainCanvasProps) {
   const [hoveredConstraint, setHoveredConstraint] = useState<HoveredNode | null>(null)
   const orbitRef = useRef<OrbitControlsImpl>(null)
   const affectingIds = useMemo(() => new Set(affectingConstraintIds), [affectingConstraintIds])
@@ -344,6 +346,7 @@ export default function BrainCanvas({ decision, reasonCodes, speedKmh, activeCon
           isPaused={isPaused}
           onHoverConstraint={setHoveredConstraint}
         />
+        <WeatherParticles conditions={weatherConditions} />
       </Canvas>
 
       <button

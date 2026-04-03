@@ -6,7 +6,7 @@ import { useTimelineStore } from '../store/timeline.store'
 import type { ServerMessage } from '../types'
 
 export function useWebSocket() {
-  const { upsertVehicle, setVehicles, setConnected } = useVehiclesStore()
+  const { upsertVehicle, setVehicles, setConnected, appendTrail } = useVehiclesStore()
   const { addEvent, setEvents, clearEvent } = useEventsStore()
   const { addEntry, setEntries } = useTimelineStore()
 
@@ -18,7 +18,7 @@ export function useWebSocket() {
           setEvents(msg.events)
           setEntries(msg.timeline)
           break
-        case 'VEHICLE_UPDATE': upsertVehicle(msg.vehicle); break
+        case 'VEHICLE_UPDATE': upsertVehicle(msg.vehicle); appendTrail(msg.vehicle.vehicleId, msg.vehicle.position.lat, msg.vehicle.position.lng, msg.vehicle.decision); break
         case 'EVENT_PUBLISHED': addEvent(msg.event); break
         case 'EVENT_CLEARED': clearEvent(msg.eventId, msg.clearedAt); break
         case 'TIMELINE_ENTRY': addEntry(msg.entry); break
@@ -27,7 +27,7 @@ export function useWebSocket() {
       }
     })
     wsClient.connect()
-  }, [upsertVehicle, setVehicles, setConnected, addEvent, setEvents, clearEvent, addEntry, setEntries])
+  }, [upsertVehicle, setVehicles, setConnected, appendTrail, addEvent, setEvents, clearEvent, addEntry, setEntries])
 
   return connect
 }

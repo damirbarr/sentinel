@@ -1,13 +1,65 @@
-import { MapContainer, TileLayer, useMapEvents, useMap, Circle } from 'react-leaflet'
-import { useEffect } from 'react'
+import { MapContainer, TileLayer, useMapEvents, useMap, Circle, Polyline } from 'react-leaflet'
+import { useEffect, useMemo } from 'react'
 import 'leaflet/dist/leaflet.css'
 import VehicleMarker from './VehicleMarker'
 import GeofenceLayer from './GeofenceLayer'
 import GeofenceDrawer from './GeofenceDrawer'
+import WeatherOverlay from './WeatherOverlay'
 import { useVehiclesStore } from '../../store/vehicles.store'
 import { useUIStore } from '../../store/ui.store'
+import { useEventsStore } from '../../store/events.store'
+import type { WeatherPayload } from '../../types'
 
 const DEFAULT_CENTER: [number, number] = [37.7749, -122.4194]
+
+const DECISION_COLORS: Record<string, string> = {
+  NORMAL: '#22d3ee',
+  DEGRADED_SPEED: '#fcd34d',
+  SAFE_STOP_RECOMMENDED: '#fc8181',
+  REROUTE_RECOMMENDED: '#fdba74',
+}
+
+function TrailLayer() {
+  const settingShowTrails = useUIStore((s) => s.settingShowTrails)
+  const trails = useVehiclesStore((s) => s.trails)
+
+  if (!settingShowTrails) return null
+
+  return (
+    <>
+      {Object.values(trails).map((trail) => {
+        if (trail.length < 2) return null
+        const segments: { points: [number, number][]; decision: string; opacity: number }[] = []
+        let segStart = 0
+        for (let i = 1; i <= trail.length; i++) {
+          if (i === trail.length || trail[i].decision !== trail[i - 1].decision) {
+            const midIdx = Math.floor((segStart + i - 1) / 2)
+            const opacity = 0.15 + (midIdx / (trail.length - 1)) * 0.65
+            segments.push({
+              points: trail.slice(segStart, i).map((p) => [p.lat, p.lng]),
+              decision: trail[segStart].decision,
+              opacity,
+            })
+            segStart = i - 1
+          }
+        }
+        return segments.map((seg, idx) => (
+          <Polyline
+            key={`${trail[0].ts}-${idx}`}
+            positions={seg.points}
+            pathOptions={{
+              color: DECISION_COLORS[seg.decision] ?? '#94a3b8',
+              weight: 2,
+              opacity: seg.opacity,
+              fill: false,
+            }}
+            interactive={false}
+          />
+        ))
+      })}
+    </>
+  )
+}
 
 function WeatherPlacementClickHandler() {
   const { isPlacingWeather, setPendingWeatherCenter, setPlacingWeather, weatherHoverCenter, pendingWeatherRadius, pendingWeatherCenter, setWeatherHoverCenter } = useUIStore()
@@ -102,6 +154,14 @@ function VehicleFollowHandler() {
 export default function MapCanvas() {
   const vehicles = useVehiclesStore((s) => s.vehicles)
   const { isDrawingGeofence, isPlacingWeather } = useUIStore()
+  const events = useEventsStore((s) => s.events)
+
+  const activeWeatherConditions = useMemo(() =>
+    Object.values(events)
+      .filter((e) => e.active && e.type === 'WEATHER')
+      .map((e) => (e.payload as WeatherPayload).condition),
+  [events])
+
   return (
     <div className={isPlacingWeather ? 'cursor-crosshair w-full h-full relative' : 'w-full h-full relative'}>
       <MapContainer center={DEFAULT_CENTER} zoom={13} style={{ width: '100%', height: '100%' }} zoomControl={false}>
@@ -111,12 +171,14 @@ export default function MapCanvas() {
           maxZoom={19}
         />
         <GeofenceLayer />
+        <TrailLayer />
         {Object.values(vehicles).map((v) => <VehicleMarker key={v.vehicleId} vehicle={v} />)}
         {isDrawingGeofence && <GeofenceDrawer />}
         <WeatherPlacementClickHandler />
         <FlyToHandler />
         <VehicleFollowHandler />
       </MapContainer>
+      <WeatherOverlay weatherConditions={activeWeatherConditions} />
       {isDrawingGeofence && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] px-3 py-1.5 rounded-full bg-black/70 border border-sky-400/50 text-xs text-sky-300 font-medium pointer-events-none">
           Click to add points · Double-click to finish

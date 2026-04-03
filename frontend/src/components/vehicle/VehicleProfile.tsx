@@ -5,6 +5,7 @@ import { useEventsStore } from '../../store/events.store'
 import { useUIStore } from '../../store/ui.store'
 import BrainCanvas from './BrainCanvas'
 import AtomCanvas from './AtomCanvas'
+import VehicleNarrative from './VehicleNarrative'
 import type { DecisionState, ActiveEvent, WeatherPayload, GeofencePayload, NetworkPayload } from '../../types'
 
 function typeClass(type: string) {
@@ -122,6 +123,10 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
     .map((id) => events[id])
     .filter(Boolean)
 
+  const weatherConditions = activeConstraints
+    .filter((e) => e.type === 'WEATHER')
+    .map((e) => (e.payload as WeatherPayload).condition)
+
   const affectingConstraints = activeConstraints.filter(e =>
     (vehicle.affectingConstraintIds ?? []).includes(e.id)
   )
@@ -151,6 +156,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
             activeConstraints={activeConstraints}
             affectingConstraintIds={vehicle.affectingConstraintIds ?? []}
             autoRotate={settingAutoRotateBrain}
+            weatherConditions={weatherConditions}
             fullscreen
           />
         </div>
@@ -210,6 +216,14 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
               </div>
             )}
 
+            {/* AI Narrative */}
+            <VehicleNarrative
+              decision={vehicle.decision}
+              reasonCodes={vehicle.reasonCodes}
+              speedKmh={vehicle.speedKmh}
+              connected={vehicle.connected}
+            />
+
             {/* Telemetry */}
             <div className="grid grid-cols-4 gap-2">
               {[
@@ -256,6 +270,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
           activeConstraints={activeConstraints}
           affectingConstraintIds={vehicle.affectingConstraintIds ?? []}
           autoRotate={settingAutoRotateBrain}
+          weatherConditions={weatherConditions}
         />
         <div className={`mt-2 w-full rounded-md border p-3 ${DECISION_COLOR[vehicle.decision]}`}>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-current opacity-70 mb-1">Decision State</p>
@@ -308,6 +323,14 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
           </div>
         </div>
       )}
+
+      {/* AI Narrative */}
+      <VehicleNarrative
+        decision={vehicle.decision}
+        reasonCodes={vehicle.reasonCodes}
+        speedKmh={vehicle.speedKmh}
+        connected={vehicle.connected}
+      />
 
       {/* Telemetry grid */}
       <div className="grid grid-cols-2 gap-2" style={{ userSelect: 'none' }}>

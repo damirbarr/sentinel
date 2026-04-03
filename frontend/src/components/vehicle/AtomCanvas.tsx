@@ -6,6 +6,7 @@ import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { ActiveEvent, DecisionState, ReasonCode, WeatherPayload, GeofencePayload, NetworkPayload } from '../../types'
 import type { BrainCanvasProps } from './BrainCanvas'
+import WeatherParticles from './WeatherParticles'
 
 // ─── Color maps ───────────────────────────────────────────────────────────────
 
@@ -327,7 +328,7 @@ function AtomScene({ decision, activeConstraints, affectingIds, reasonCodes, isP
 
 // ─── AtomCanvas (public export) ───────────────────────────────────────────────
 
-export default function AtomCanvas({ decision, reasonCodes, speedKmh, activeConstraints, affectingConstraintIds = [], fullscreen, autoRotate = true }: BrainCanvasProps) {
+export default function AtomCanvas({ decision, reasonCodes, speedKmh, activeConstraints, affectingConstraintIds = [], fullscreen, autoRotate = true, weatherConditions = [] }: BrainCanvasProps) {
   const [hovered, setHovered] = useState<HoverInfo | null>(null)
   const orbitRef = useRef<OrbitControlsImpl>(null)
   const affectingIds = useMemo(() => new Set(affectingConstraintIds), [affectingConstraintIds])
@@ -371,6 +372,7 @@ export default function AtomCanvas({ decision, reasonCodes, speedKmh, activeCons
           isPaused={isPaused}
           onHover={setHovered}
         />
+        <WeatherParticles conditions={weatherConditions} />
       </Canvas>
 
       <button

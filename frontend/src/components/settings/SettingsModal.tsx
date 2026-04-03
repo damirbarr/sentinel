@@ -8,10 +8,12 @@ export default function SettingsModal() {
     settingSpeedDegradationPct,
     settingAutoRotateBrain,
     settingVizMode,
+    settingShowTrails,
     setSettingMaxConstraintDistance,
     setSettingSpeedDegradationPct,
     setSettingAutoRotateBrain,
     setSettingVizMode,
+    setSettingShowTrails,
   } = useUIStore()
 
   if (!settingsOpen) return null
@@ -117,6 +119,27 @@ export default function SettingsModal() {
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
                   settingAutoRotateBrain ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Vehicle path trails */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-300">Vehicle Path Trails</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">Show last 60s of each vehicle's path on the map.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSettingShowTrails(!settingShowTrails)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
+                settingShowTrails ? 'bg-accent-blue/80 border-accent-blue' : 'bg-surface-2 border-surface-border'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  settingShowTrails ? 'translate-x-6' : 'translate-x-1'
                 }`}
               />
             </button>

@@ -18,6 +18,7 @@ interface UIState {
   settingSpeedDegradationPct: number
   settingAutoRotateBrain: boolean
   settingVizMode: 'brain' | 'atom'
+  settingShowTrails: boolean
   followingVehicleId: string | null
   setSelectedVehicle: (id: string | null) => void
   setTimelineOpen: (open: boolean) => void
@@ -34,6 +35,7 @@ interface UIState {
   setSettingSpeedDegradationPct: (v: number) => void
   setSettingAutoRotateBrain: (v: boolean) => void
   setSettingVizMode: (v: 'brain' | 'atom') => void
+  setSettingShowTrails: (v: boolean) => void
   setFollowingVehicle: (id: string | null) => void
 }
 
@@ -55,6 +57,7 @@ export const useUIStore = create<UIState>()(
       settingSpeedDegradationPct: 25,
       settingAutoRotateBrain: true,
       settingVizMode: 'brain' as 'brain' | 'atom',
+      settingShowTrails: true,
       followingVehicleId: null,
       setSelectedVehicle: (id) => set({ selectedVehicleId: id }),
       setTimelineOpen: (open) => set({ timelineOpen: open }),
@@ -71,6 +74,7 @@ export const useUIStore = create<UIState>()(
       setSettingSpeedDegradationPct: (v) => set({ settingSpeedDegradationPct: v }),
       setSettingAutoRotateBrain: (v) => set({ settingAutoRotateBrain: v }),
       setSettingVizMode: (v) => set({ settingVizMode: v }),
+      setSettingShowTrails: (v) => set({ settingShowTrails: v }),
       setFollowingVehicle: (id) => set({ followingVehicleId: id }),
     }),
     {
@@ -80,6 +84,7 @@ export const useUIStore = create<UIState>()(
         settingSpeedDegradationPct: state.settingSpeedDegradationPct,
         settingAutoRotateBrain: state.settingAutoRotateBrain,
         settingVizMode: state.settingVizMode,
+        settingShowTrails: state.settingShowTrails,
       }),
     }
   )
