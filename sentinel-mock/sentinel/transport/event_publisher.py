@@ -28,7 +28,8 @@ class EventPublisher:
     async def publish_network(self, severity: str) -> None:
         event = {
             'type': 'NETWORK',
-            'payload': {'severity': severity},
+            'payload': {'severity': severity, 'vehicleId': self._vehicle_id},
+            'durationMinutes': 3,
         }
         await self._post(event)
 
@@ -37,9 +38,10 @@ class EventPublisher:
             'type': 'GEOFENCE',
             'payload': {
                 'type': 'CAUTION',
-                'label': f'Obstacle reported by {self._vehicle_id}',
+                'label': f'Obstacle: {self._vehicle_id}',
                 'polygon': _obstacle_polygon(lat, lng),
             },
+            'durationMinutes': 3,
         }
         await self._post(event)
 

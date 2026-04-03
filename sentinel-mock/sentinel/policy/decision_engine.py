@@ -79,7 +79,8 @@ class DecisionEngine:
         self.vehicle_id = vehicle_id
         self.max_distance_km = max_constraint_distance_km
 
-    def evaluate(self, constraints: list[ActiveConstraint], lat: float, lng: float) -> tuple[DecisionState, list[str]]:
+    def evaluate(self, constraints: list[ActiveConstraint], lat: float, lng: float) -> tuple[DecisionState, list[str], list[str], list[str]]:
+        # Returns: (decision, codes, affecting_ids, nearby_ids)
         filtered = []
         for c in constraints:
             if not c.active:
@@ -103,6 +104,8 @@ class DecisionEngine:
 
         overall: DecisionState = 'NORMAL'
         codes: list[str] = []
+        affecting_ids: list[str] = []
+        nearby_ids: list[str] = []
 
         for c in filtered:
             if c.type == 'WEATHER':
@@ -113,6 +116,10 @@ class DecisionEngine:
                 d, cc = _eval_network(c.payload, self.vehicle_id)  # type: ignore[arg-type]
             else:
                 continue
+            if cc:  # this constraint actually triggered codes
+                affecting_ids.append(c.id)
+            else:
+                nearby_ids.append(c.id)
             if _PRIORITY.get(d, 0) > _PRIORITY.get(overall, 0):
                 overall = d
             codes.extend(cc)
@@ -120,4 +127,4 @@ class DecisionEngine:
         unique = list(dict.fromkeys(codes))
         if len([c for c in unique if not c.startswith('MULTI')]) > 1:
             unique.append(ReasonCode.MULTI_FACTOR_RISK.value)
-        return overall, unique
+        return overall, unique, affecting_ids, nearby_ids

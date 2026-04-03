@@ -104,11 +104,11 @@ async def chaos_loop(vehicle_id: str, reporter, stop_event: asyncio.Event) -> No
     SIGNALS = [
         ('SIMULATE_PERCEPTION_ALARM', {'message': 'Chaos: perception fault'}),
         ('SIMULATE_NETWORK_DEGRADED', {}),
-        ('SIMULATE_NETWORK_LOST', {}),
         ('SIMULATE_OBSTACLE_DETECTED', {}),
         ('SIMULATE_SENSOR_FAULT', {'description': 'Chaos: sensor malfunction'}),
         ('CLEAR_SIMULATION', {}),
-        ('CLEAR_SIMULATION', {}),  # weight clear higher so it doesn't stack up
+        ('CLEAR_SIMULATION', {}),
+        ('CLEAR_SIMULATION', {}),  # weight clear 3x so signals don't pile up
     ]
     logger.info(f'[{vehicle_id}] Chaos mode active — random signals every ~5s')
     while not stop_event.is_set():

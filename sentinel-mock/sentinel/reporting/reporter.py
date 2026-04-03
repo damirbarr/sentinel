@@ -51,6 +51,11 @@ class Reporter:
             await self._handle_command(msg.get('command', ''), msg.get('payload', {}))
 
     async def _handle_command(self, command: str, payload: dict) -> None:
+        # Auto-clear any previous simulation before applying a new one,
+        # so only one simulated signal is active at a time.
+        if command != 'CLEAR_SIMULATION' and self._simulated:
+            self._simulated = {}
+            await self._publisher.clear_all()
         if command == 'SIMULATE_NETWORK_DEGRADED':
             self._simulated['network'] = 'DEGRADED'
             await self._publisher.publish_network('POOR')
@@ -130,7 +135,7 @@ class Reporter:
         return self.state.normal_speed_kmh
 
     async def _evaluate_and_report(self, force: bool = False) -> None:
-        decision, codes = self.engine.evaluate(
+        decision, codes, affecting_ids, nearby_ids = self.engine.evaluate(
             self._constraints,
             lat=self.state.position.lat,
             lng=self.state.position.lng,
@@ -158,7 +163,7 @@ class Reporter:
             logger.info(f'{self.vehicle_id}: {self._last_decision} -> {decision} ({", ".join(codes)})')
         self._last_decision = decision
         if force or changed:
-            await self._send_status(decision, codes)
+            await self._send_status(decision, codes, affecting_ids)
         else:
             # Keep state in sync even when no status message is sent
             speed = self._compute_speed(decision, codes)
@@ -166,7 +171,7 @@ class Reporter:
             self.state.current_decision = decision
             self.state.cautious_mode = 'IN_GEOFENCE_CAUTION_ZONE' in codes
 
-    async def _send_status(self, decision: str, codes: list[str]) -> None:
+    async def _send_status(self, decision: str, codes: list[str], affecting_ids: list[str] | None = None) -> None:
         speed = self._compute_speed(decision, codes)
         self.state.speed_kmh = speed
         self.state.current_decision = decision
@@ -181,6 +186,7 @@ class Reporter:
             decision=decision,  # type: ignore[arg-type]
             reasonCodes=codes,
             activeConstraintIds=[c.id for c in self._constraints if c.active],
+            affectingConstraintIds=affecting_ids if affecting_ids is not None else [],
         )
         msg = SentinelMessage(type='STATUS_UPDATE', vehicleId=self.vehicle_id, payload=payload.to_dict())
         await self.client.send(msg.to_dict())
@@ -188,11 +194,11 @@ class Reporter:
     async def run_periodic_reporting(self) -> None:
         while True:
             await asyncio.sleep(self.status_interval)
-            decision, codes = self.engine.evaluate(
+            decision, codes, affecting_ids, nearby_ids = self.engine.evaluate(
                 self._constraints, lat=self.state.position.lat, lng=self.state.position.lng
             )
             if self._simulated:
                 decision, codes = self._apply_simulated(decision, codes)
             self._last_decision = decision
-            await self._send_status(decision, codes)
+            await self._send_status(decision, codes, affecting_ids)
             # _send_status writes speed/decision/cautious_mode to state

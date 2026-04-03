@@ -38,6 +38,7 @@ class VehicleStatusPayload:
     decision: DecisionState
     reasonCodes: list[str] = field(default_factory=list)
     activeConstraintIds: list[str] = field(default_factory=list)
+    affectingConstraintIds: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -50,6 +51,7 @@ class VehicleStatusPayload:
             'decision': self.decision,
             'reasonCodes': self.reasonCodes,
             'activeConstraintIds': self.activeConstraintIds,
+            'affectingConstraintIds': self.affectingConstraintIds,
         }
 
 

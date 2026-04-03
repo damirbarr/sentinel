@@ -19,56 +19,68 @@ def network(severity, vehicle_id=None):
 
 def test_normal_no_constraints():
     e = DecisionEngine('v1')
-    d, c = e.evaluate([], 37.77, -122.4)
+    d, c, affecting, nearby = e.evaluate([], 37.77, -122.4)
     assert d == 'NORMAL' and c == []
 
 def test_heavy_rain_high_stops():
     e = DecisionEngine('v1')
-    d, c = e.evaluate([weather('HEAVY_RAIN', 'HIGH')], 37.7, -122.4)
+    d, c, affecting, nearby = e.evaluate([weather('HEAVY_RAIN', 'HIGH')], 37.7, -122.4)
     assert d == 'SAFE_STOP_RECOMMENDED'
     assert 'WEATHER_HEAVY_RAIN' in c
 
 def test_heavy_rain_low_degrades():
     e = DecisionEngine('v1')
-    d, c = e.evaluate([weather('HEAVY_RAIN', 'LOW')], 37.7, -122.4)
+    d, c, affecting, nearby = e.evaluate([weather('HEAVY_RAIN', 'LOW')], 37.7, -122.4)
     assert d == 'DEGRADED_SPEED'
 
 def test_fog_moderate_degrades():
     e = DecisionEngine('v1')
-    d, c = e.evaluate([weather('FOG', 'MODERATE')], 37.7, -122.4)
+    d, c, affecting, nearby = e.evaluate([weather('FOG', 'MODERATE')], 37.7, -122.4)
     assert d == 'DEGRADED_SPEED'
     assert 'WEATHER_FOG' in c
 
 def test_network_lost_stops():
     e = DecisionEngine('v1')
-    d, c = e.evaluate([network('LOST')], 37.7, -122.4)
+    d, c, affecting, nearby = e.evaluate([network('LOST')], 37.7, -122.4)
     assert d == 'SAFE_STOP_RECOMMENDED'
     assert 'NETWORK_LOST' in c
 
 def test_network_lost_targeted_applies():
     e = DecisionEngine('v1')
-    d, c = e.evaluate([network('LOST', 'v1')], 37.7, -122.4)
+    d, c, affecting, nearby = e.evaluate([network('LOST', 'v1')], 37.7, -122.4)
     assert d == 'SAFE_STOP_RECOMMENDED'
 
 def test_network_lost_other_ignored():
     e = DecisionEngine('v1')
-    d, c = e.evaluate([network('LOST', 'v2')], 37.7, -122.4)
+    d, c, affecting, nearby = e.evaluate([network('LOST', 'v2')], 37.7, -122.4)
     assert d == 'NORMAL'
 
 def test_inside_forbidden_zone_stops():
     poly = [LatLng(37.77, -122.43), LatLng(37.78, -122.43), LatLng(37.78, -122.41)]
     e = DecisionEngine('v1')
-    d, c = e.evaluate([geofence('FORBIDDEN', poly)], 37.775, -122.425)
+    d, c, affecting, nearby = e.evaluate([geofence('FORBIDDEN', poly)], 37.775, -122.425)
     assert d == 'SAFE_STOP_RECOMMENDED'
     assert 'IN_GEOFENCE_FORBIDDEN_ZONE' in c
 
 def test_outside_geofence_normal():
     poly = [LatLng(40.0, -74.0), LatLng(40.1, -74.0), LatLng(40.1, -73.9)]
     e = DecisionEngine('v1')
-    d, c = e.evaluate([geofence('FORBIDDEN', poly)], 37.7749, -122.4194)
+    d, c, affecting, nearby = e.evaluate([geofence('FORBIDDEN', poly)], 37.7749, -122.4194)
     assert d == 'NORMAL'
 
 def test_multi_factor_risk():
     e = DecisionEngine('v1')
-    d, c = e.evaluate([weather('FOG', 'MODERATE'), network('DEGRADED')], 37.7, -122.4)
+    d, c, affecting, nearby = e.evaluate([weather('FOG', 'MODERATE'), network('DEGRADED')], 37.7, -122.4)
     assert 'MULTI_FACTOR_RISK' in c
+
+def test_affecting_vs_nearby_ids():
+    poly = [LatLng(37.77, -122.43), LatLng(37.78, -122.43), LatLng(37.78, -122.41)]
+    e = DecisionEngine('v1')
+    # Vehicle inside forbidden zone → geofence is affecting; network for other vehicle → nearby
+    constraints = [
+        geofence('FORBIDDEN', poly),
+        network('LOST', 'v2'),
+    ]
+    d, c, affecting, nearby = e.evaluate(constraints, 37.775, -122.425)
+    assert 'g1' in affecting
+    assert 'n1' in nearby

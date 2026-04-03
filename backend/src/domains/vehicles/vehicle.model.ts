@@ -30,6 +30,7 @@ export interface VehicleStatus {
   decision: DecisionState
   reasonCodes: ReasonCode[]
   activeConstraintIds: string[]
+  affectingConstraintIds: string[]
   lastSeenAt: string
   connected: boolean
 }
@@ -51,6 +52,7 @@ export interface SentinelStatusPayload {
   decision: DecisionState
   reasonCodes: ReasonCode[]
   activeConstraintIds: string[]
+  affectingConstraintIds: string[]
 }
 
 export interface SentinelEventPayload {

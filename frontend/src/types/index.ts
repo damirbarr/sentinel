@@ -35,6 +35,7 @@ export interface VehicleStatus {
   decision: DecisionState
   reasonCodes: ReasonCode[]
   activeConstraintIds: string[]
+  affectingConstraintIds: string[]
   lastSeenAt: string
   connected: boolean
 }
