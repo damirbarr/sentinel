@@ -1,13 +1,13 @@
 import { useRef, useMemo, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Points, PointMaterial } from '@react-three/drei'
+import { OrbitControls, Line, Points, PointMaterial } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { ActiveEvent, DecisionState, ReasonCode, WeatherPayload, GeofencePayload, NetworkPayload } from '../../types'
 import type { BrainCanvasProps } from './BrainCanvas'
 
-// ─── Shared color maps ────────────────────────────────────────────────────────
+// ─── Color maps ───────────────────────────────────────────────────────────────
 
 const DECISION_COLOR: Record<string, string> = {
   NORMAL: '#22d3ee',
@@ -39,6 +39,9 @@ const REASON_CODE_GROUP: Record<string, string> = {
   SENSOR_FAULT: 'SENSOR',
   MULTI_FACTOR_RISK: 'INTERNAL',
 }
+
+// Spirograph harmonic ratios — each creates a unique non-circular path
+const HARMONICS = [1.618, 2.0, 1.5, 0.667, 2.5, 0.75, 3.0, 1.333]
 
 function getConstraintSummary(event: ActiveEvent): string {
   if (event.type === 'WEATHER') {
@@ -72,22 +75,22 @@ interface HoverInfo { type: string; label: string; color: string }
 
 // ─── Atom Nucleus ─────────────────────────────────────────────────────────────
 
-function AtomNucleus({ decisionColor, affectingCount }: { decisionColor: string; affectingCount: number }) {
+function AtomNucleus({ decisionColor, affectingCount, isPaused }: { decisionColor: string; affectingCount: number; isPaused: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null)
   const smoothRef = useRef(Math.min(affectingCount / 8, 1))
   const color = useMemo(() => new THREE.Color(decisionColor), [decisionColor])
 
   useFrame(({ clock }) => {
-    if (!meshRef.current) return
-    // Smooth stability transitions
+    if (isPaused || !meshRef.current) return
     const target = Math.min(affectingCount / 8, 1)
     smoothRef.current += (target - smoothRef.current) * 0.03
     const s = smoothRef.current
     const t = clock.getElapsedTime()
     const mat = meshRef.current.material as THREE.MeshStandardMaterial
-    mat.emissiveIntensity = 0.8 + 0.5 * Math.sin(t * (1.5 + s * 2.5))
+    // Subtle pulse — reduced amplitude
+    mat.emissiveIntensity = 0.72 + 0.12 * Math.sin(t * (1.0 + s * 1.2))
     if (s > 0.4) {
-      meshRef.current.scale.setScalar(1 + 0.03 * s * Math.sin(t * 3))
+      meshRef.current.scale.setScalar(1 + 0.02 * s * Math.sin(t * 2.5))
     }
   })
 
@@ -95,9 +98,9 @@ function AtomNucleus({ decisionColor, affectingCount }: { decisionColor: string;
     <group>
       <mesh ref={meshRef}>
         <sphereGeometry args={[0.28, 24, 24]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.8} metalness={0.4} roughness={0.3} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.72} metalness={0.4} roughness={0.3} />
       </mesh>
-      <pointLight color={decisionColor} intensity={1.5} distance={4} />
+      <pointLight color={decisionColor} intensity={1.3} distance={4} />
     </group>
   )
 }
@@ -107,117 +110,138 @@ function AtomNucleus({ decisionColor, affectingCount }: { decisionColor: string;
 interface ElectronOrbitProps {
   nodeId: string
   color: string
-  targetStability: number   // 0–1, based on affecting count; smoothed internally
+  targetStability: number
   affecting: boolean
+  isPaused: boolean
   onHover: (info: HoverInfo | null) => void
   hoverInfo: HoverInfo
 }
 
-function ElectronOrbit({ nodeId, color, targetStability, affecting, onHover, hoverInfo }: ElectronOrbitProps) {
+function ElectronOrbit({ nodeId, color, targetStability, affecting, isPaused, onHover, hoverInfo }: ElectronOrbitProps) {
   const groupRef    = useRef<THREE.Group>(null)
   const electronRef = useRef<THREE.Mesh>(null)
   const ringMatRef  = useRef<THREE.MeshStandardMaterial>(null)
   const elecMatRef  = useRef<THREE.MeshStandardMaterial>(null)
-  const birthRef    = useRef(-1)
+  // Frozen time: advances only when not paused — ensures smooth resume with no position jump
+  const frozenT     = useRef(0)
+  const lastReal    = useRef(-1)
+  const birthT      = useRef(-1)
   const smoothStab  = useRef(targetStability)
 
-  // Deterministic per-orbit properties from id hash
   const h = useMemo(() => hashId(nodeId), [nodeId])
-  const orbitRadius = 1.2 + (h % 100) / 250           // 1.20 – 1.60
-  const speed       = 0.4 + (h % 80) / 100            // 0.40 – 1.20
-  const phase       = (h % 628) / 100                 // 0 – 2π
+  const orbitRadius = 1.2 + (h % 100) / 250             // 1.20 – 1.60
+  const speed       = 0.4 + (h % 80) / 100              // 0.40 – 1.20
+  const phase       = (h % 628) / 100                   // 0 – 2π
   const baseRx      = ((h % 314) / 100) - Math.PI / 2
   const baseRy      = ((h >> 4 & 0xff) / 255) * Math.PI
   const driftX      = ((h >> 8  & 0xff) / 255 - 0.5) * 0.4
   const driftZ      = ((h >> 16 & 0xff) / 255 - 0.5) * 0.4
+  const harmonic    = HARMONICS[h % HARMONICS.length]
+  // Spirograph radii
+  const R1 = orbitRadius * 0.72   // primary orbit radius
+  const R2 = orbitRadius * 0.30   // epicycle radius
 
   const colorObj = useMemo(() => new THREE.Color(color), [color])
 
-  // Visual targets by affecting state
-  const ringOpacityFull  = affecting ? 0.35 : 0.07
-  const elecOpacityFull  = affecting ? 1.0  : 0.15
-  const elecEmissiveFull = affecting ? 1.4  : 0.2
-  const elecRadius       = affecting ? 0.08 : 0.04
+  // Guide ring: thin circle at primary orbit radius, in orbit plane
+  const ringPoints = useMemo<[number, number, number][]>(() => {
+    const pts: [number, number, number][] = []
+    for (let i = 0; i <= 80; i++) {
+      const a = (i / 80) * Math.PI * 2
+      pts.push([R1 * Math.cos(a), R1 * Math.sin(a), 0])
+    }
+    return pts
+  }, [R1])
+
+  const ringOpacity = affecting ? 0.12 : 0.04
+  const elecOpacity = affecting ? 1.0  : 0.15
+  const elecEmit    = affecting ? 1.4  : 0.2
+  const elecR       = affecting ? 0.08 : 0.04
 
   useFrame(({ clock }) => {
-    const t = clock.getElapsedTime()
+    const real = clock.getElapsedTime()
+    // Accumulate frozen time only when not paused
+    if (lastReal.current >= 0) {
+      if (!isPaused) frozenT.current += real - lastReal.current
+    } else {
+      // First frame: initialise frozen time and birth time
+      frozenT.current = real
+      birthT.current  = real
+    }
+    lastReal.current = real
 
-    // Record birth on first frame
-    if (birthRef.current < 0) birthRef.current = t
-    const age = t - birthRef.current
-    const entryProgress = easeOutCubic(Math.min(age / 0.5, 1))
+    const t = frozenT.current
+    const age = t - birthT.current
+    const entry = easeOutCubic(Math.min(age / 0.5, 1))
 
-    // Smooth stability
     smoothStab.current += (targetStability - smoothStab.current) * 0.03
     const stab = smoothStab.current
 
-    // Orbit rotation drifts more at higher stability
     if (groupRef.current) {
-      groupRef.current.scale.setScalar(entryProgress)
+      groupRef.current.scale.setScalar(entry)
       const drift = stab * t * 0.15
       groupRef.current.rotation.x = baseRx + driftX * drift
       groupRef.current.rotation.y = baseRy + driftZ * drift * 0.7
       groupRef.current.rotation.z = driftZ * drift * 0.4
     }
 
-    // Electron position along orbit (torus lies in XY plane)
+    // Spirograph position: two angular frequencies combined
     if (electronRef.current) {
-      const angle = t * speed + phase
-      electronRef.current.position.set(orbitRadius * Math.cos(angle), orbitRadius * Math.sin(angle), 0)
+      const a1 = t * speed + phase
+      const a2 = t * speed * harmonic + phase * 1.7
+      const ex = R1 * Math.cos(a1) + R2 * Math.cos(a2)
+      const ey = R1 * Math.sin(a1) + R2 * Math.sin(a2)
+      const ez = R2 * Math.sin(a2 * 0.7 + 0.8) * 0.5  // small out-of-plane wobble
+      electronRef.current.position.set(ex, ey, ez)
     }
 
-    const p = entryProgress
-    if (ringMatRef.current)  ringMatRef.current.opacity = p * ringOpacityFull
+    if (ringMatRef.current)  ringMatRef.current.opacity = entry * ringOpacity
     if (elecMatRef.current) {
-      elecMatRef.current.opacity = p * elecOpacityFull
-      elecMatRef.current.emissiveIntensity = p * elecEmissiveFull
+      elecMatRef.current.opacity = entry * elecOpacity
+      elecMatRef.current.emissiveIntensity = entry * elecEmit
     }
   })
 
   return (
     <group ref={groupRef}>
-      {/* Orbit ring */}
-      <mesh>
-        <torusGeometry args={[orbitRadius, 0.012, 8, 64]} />
-        <meshStandardMaterial
-          ref={ringMatRef}
-          color={colorObj}
-          emissive={colorObj}
-          emissiveIntensity={0.5}
-          transparent
-          opacity={ringOpacityFull}
-        />
-      </mesh>
-      {/* Electron */}
+      {/* Faint guide ring (thin circle at primary orbit radius) */}
+      <Line
+        points={ringPoints}
+        color={color}
+        lineWidth={affecting ? 0.6 : 0.3}
+        transparent
+        opacity={ringOpacity}
+      />
+      {/* Electron sphere */}
       <mesh
         ref={electronRef}
         onPointerOver={(e) => { e.stopPropagation(); onHover(hoverInfo) }}
         onPointerOut={() => onHover(null)}
       >
-        <sphereGeometry args={[elecRadius, 10, 10]} />
+        <sphereGeometry args={[elecR, 10, 10]} />
         <meshStandardMaterial
           ref={elecMatRef}
           color={colorObj}
           emissive={colorObj}
-          emissiveIntensity={elecEmissiveFull}
+          emissiveIntensity={elecEmit}
           transparent
-          opacity={elecOpacityFull}
+          opacity={elecOpacity}
         />
       </mesh>
     </group>
   )
 }
 
-// ─── Idle Particle Cloud ──────────────────────────────────────────────────────
+// ─── Ambient Stars (always present) ──────────────────────────────────────────
 
-function IdleParticleCloud() {
+function AmbientStars({ isPaused }: { isPaused: boolean }) {
   const pointsRef = useRef<THREE.Points>(null)
   const positions = useMemo(() => {
     const pos = new Float32Array(120 * 3)
     for (let i = 0; i < 120; i++) {
       const theta = Math.random() * Math.PI * 2
       const phi = Math.acos(2 * Math.random() - 1)
-      const r = 1.8
+      const r = 2.2
       pos[i * 3]     = r * Math.sin(phi) * Math.cos(theta)
       pos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta)
       pos[i * 3 + 2] = r * Math.cos(phi)
@@ -225,15 +249,14 @@ function IdleParticleCloud() {
     return pos
   }, [])
   useFrame(({ clock }) => {
-    if (pointsRef.current) {
-      const t = clock.getElapsedTime()
-      pointsRef.current.rotation.y = t * 0.08
-      pointsRef.current.rotation.x = t * 0.03
-    }
+    if (isPaused || !pointsRef.current) return
+    const t = clock.getElapsedTime()
+    pointsRef.current.rotation.y = t * 0.04
+    pointsRef.current.rotation.x = t * 0.015
   })
   return (
     <Points ref={pointsRef} positions={positions}>
-      <PointMaterial color="#94a3b8" size={0.018} transparent opacity={0.5} sizeAttenuation />
+      <PointMaterial color="#94a3b8" size={0.014} transparent opacity={0.25} sizeAttenuation />
     </Points>
   )
 }
@@ -247,10 +270,11 @@ interface AtomSceneProps {
   activeConstraints: ActiveEvent[]
   affectingIds: Set<string>
   reasonCodes: ReasonCode[]
+  isPaused: boolean
   onHover: (info: HoverInfo | null) => void
 }
 
-function AtomScene({ decision, activeConstraints, affectingIds, reasonCodes, onHover }: AtomSceneProps) {
+function AtomScene({ decision, activeConstraints, affectingIds, reasonCodes, isPaused, onHover }: AtomSceneProps) {
   const decisionColor = DECISION_COLOR[decision] ?? '#22d3ee'
 
   const syntheticNodes = useMemo(() =>
@@ -272,13 +296,12 @@ function AtomScene({ decision, activeConstraints, affectingIds, reasonCodes, onH
     ...syntheticNodes.map((code) => ({
       id: code,
       color: REASON_CODE_COLOR[code],
-      affecting: true,  // internal signals are always affecting
+      affecting: true,
       hoverInfo: { type: REASON_CODE_GROUP[code] ?? 'INTERNAL', label: code.replace(/_/g, ' '), color: REASON_CODE_COLOR[code] },
     })),
   ], [activeConstraints, affectingIds, syntheticNodes])
 
   const affectingCount = nodes.filter(n => n.affecting).length
-  // targetStability drives nucleus + orbit drift — based on affecting count only
   const targetStability = Math.min(affectingCount / 8, 1)
 
   return (
@@ -287,23 +310,21 @@ function AtomScene({ decision, activeConstraints, affectingIds, reasonCodes, onH
       <pointLight position={[2, 2, 2]} color={decisionColor} intensity={0.8} />
       <pointLight position={[-2, -1, -2]} color="#ffffff" intensity={0.4} />
 
-      <AtomNucleus decisionColor={decisionColor} affectingCount={affectingCount} />
+      <AmbientStars isPaused={isPaused} />
+      <AtomNucleus decisionColor={decisionColor} affectingCount={affectingCount} isPaused={isPaused} />
 
-      {nodes.length === 0 ? (
-        <IdleParticleCloud />
-      ) : (
-        nodes.map((node) => (
-          <ElectronOrbit
-            key={node.id}
-            nodeId={node.id}
-            color={node.color}
-            targetStability={targetStability}
-            affecting={node.affecting}
-            onHover={onHover}
-            hoverInfo={node.hoverInfo}
-          />
-        ))
-      )}
+      {nodes.map((node) => (
+        <ElectronOrbit
+          key={node.id}
+          nodeId={node.id}
+          color={node.color}
+          targetStability={targetStability}
+          affecting={node.affecting}
+          isPaused={isPaused}
+          onHover={onHover}
+          hoverInfo={node.hoverInfo}
+        />
+      ))}
 
       <EffectComposer>
         <Bloom luminanceThreshold={0.15} intensity={1.2} mipmapBlur />
@@ -318,6 +339,7 @@ export default function AtomCanvas({ decision, reasonCodes, speedKmh, activeCons
   const [hovered, setHovered] = useState<HoverInfo | null>(null)
   const orbitRef = useRef<OrbitControlsImpl>(null)
   const affectingIds = useMemo(() => new Set(affectingConstraintIds), [affectingConstraintIds])
+  const isPaused = !!hovered
 
   return (
     <div style={{ position: 'relative', height: fullscreen ? '100vh' : '260px', userSelect: 'none' }}>
@@ -328,7 +350,7 @@ export default function AtomCanvas({ decision, reasonCodes, speedKmh, activeCons
       >
         <OrbitControls
           ref={orbitRef as any}
-          autoRotate={autoRotate}
+          autoRotate={autoRotate && !isPaused}
           autoRotateSpeed={0.3}
           enableZoom
           minDistance={2}
@@ -340,6 +362,7 @@ export default function AtomCanvas({ decision, reasonCodes, speedKmh, activeCons
           activeConstraints={activeConstraints}
           affectingIds={affectingIds}
           reasonCodes={reasonCodes}
+          isPaused={isPaused}
           onHover={setHovered}
         />
       </Canvas>

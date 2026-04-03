@@ -47,7 +47,7 @@ function hashId(id: string): number {
   return h
 }
 
-// Stable position on a sphere derived purely from node id — never shifts when count changes
+// Stable position on sphere derived from id — never shifts when count changes
 function getStablePosition(id: string): [number, number, number] {
   const h = hashId(id)
   const phi = Math.acos(1 - 2 * ((h % 997 + 0.5) / 997))
@@ -80,16 +80,16 @@ function getConstraintSummary(event: ActiveEvent): string {
 
 // ─── Decision Core ────────────────────────────────────────────────────────────
 
-function DecisionCore({ decisionColor, affectingCount }: { decisionColor: string; affectingCount: number }) {
+function DecisionCore({ decisionColor, affectingCount, isPaused }: { decisionColor: string; affectingCount: number; isPaused: boolean }) {
   const innerRef = useRef<THREE.Mesh>(null)
   const color = useMemo(() => new THREE.Color(decisionColor), [decisionColor])
 
   useFrame(({ clock }) => {
-    if (innerRef.current) {
-      const t = clock.getElapsedTime()
-      const mat = innerRef.current.material as THREE.MeshStandardMaterial
-      mat.emissiveIntensity = 0.6 + 0.4 * Math.sin(t * (1 + affectingCount * 0.3))
-    }
+    if (isPaused || !innerRef.current) return
+    const t = clock.getElapsedTime()
+    const mat = innerRef.current.material as THREE.MeshStandardMaterial
+    // Subtle pulse — reduced amplitude
+    mat.emissiveIntensity = 0.55 + 0.1 * Math.sin(t * (1 + affectingCount * 0.25))
   })
 
   return (
@@ -98,7 +98,7 @@ function DecisionCore({ decisionColor, affectingCount }: { decisionColor: string
         <meshStandardMaterial color={decisionColor} wireframe transparent opacity={0.15} />
       </Sphere>
       <Sphere args={[0.35, 24, 24]} ref={innerRef}>
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.6} metalness={0.3} roughness={0.4} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.55} metalness={0.3} roughness={0.4} />
       </Sphere>
       <pointLight color={decisionColor} intensity={1.5} distance={3} />
     </group>
@@ -110,16 +110,18 @@ function DecisionCore({ decisionColor, affectingCount }: { decisionColor: string
 interface ConstraintNodeProps {
   constraint: ActiveEvent
   affecting: boolean
+  isPaused: boolean
   onHover: (c: ActiveEvent | null) => void
 }
 
-function ConstraintNode({ constraint, affecting, onHover }: ConstraintNodeProps) {
+function ConstraintNode({ constraint, affecting, isPaused, onHover }: ConstraintNodeProps) {
   const typeColor = TYPE_COLOR[constraint.type] ?? '#a78bfa'
   const nodePos = getStablePosition(constraint.id)
   const groupRef = useRef<THREE.Group>(null)
   const birthRef = useRef(-1)
 
   useFrame(({ clock }) => {
+    if (isPaused) return
     if (birthRef.current < 0) birthRef.current = clock.getElapsedTime()
     const progress = easeOutCubic(Math.min((clock.getElapsedTime() - birthRef.current) / 0.5, 1))
     groupRef.current?.scale.setScalar(progress)
@@ -153,21 +155,23 @@ function ConstraintNode({ constraint, affecting, onHover }: ConstraintNodeProps)
   )
 }
 
-// ─── Reason Code Node (always affecting — internal signals) ───────────────────
+// ─── Reason Code Node (always affecting) ─────────────────────────────────────
 
 interface ReasonCodeNodeProps {
   code: string
   color: string
+  isPaused: boolean
   onHover: (h: ReasonCodeHover | null) => void
 }
 
-function ReasonCodeNode({ code, color, onHover }: ReasonCodeNodeProps) {
+function ReasonCodeNode({ code, color, isPaused, onHover }: ReasonCodeNodeProps) {
   const nodePos = getStablePosition(code)
   const group = REASON_CODE_GROUP[code] ?? 'INTERNAL'
   const groupRef = useRef<THREE.Group>(null)
   const birthRef = useRef(-1)
 
   useFrame(({ clock }) => {
+    if (isPaused) return
     if (birthRef.current < 0) birthRef.current = clock.getElapsedTime()
     const progress = easeOutCubic(Math.min((clock.getElapsedTime() - birthRef.current) / 0.5, 1))
     groupRef.current?.scale.setScalar(progress)
@@ -190,7 +194,7 @@ function ReasonCodeNode({ code, color, onHover }: ReasonCodeNodeProps) {
 
 // ─── Idle Particle Cloud ──────────────────────────────────────────────────────
 
-function IdleParticleCloud() {
+function IdleParticleCloud({ isPaused }: { isPaused: boolean }) {
   const pointsRef = useRef<THREE.Points>(null)
   const positions = useMemo(() => {
     const pos = new Float32Array(120 * 3)
@@ -205,11 +209,10 @@ function IdleParticleCloud() {
     return pos
   }, [])
   useFrame(({ clock }) => {
-    if (pointsRef.current) {
-      const t = clock.getElapsedTime()
-      pointsRef.current.rotation.y = t * 0.08
-      pointsRef.current.rotation.x = t * 0.03
-    }
+    if (isPaused || !pointsRef.current) return
+    const t = clock.getElapsedTime()
+    pointsRef.current.rotation.y = t * 0.08
+    pointsRef.current.rotation.x = t * 0.03
   })
   return (
     <Points ref={pointsRef} positions={positions}>
@@ -225,10 +228,11 @@ interface SceneProps {
   activeConstraints: ActiveEvent[]
   affectingIds: Set<string>
   reasonCodes: ReasonCode[]
+  isPaused: boolean
   onHoverConstraint: (c: HoveredNode | null) => void
 }
 
-function Scene({ decision, activeConstraints, affectingIds, reasonCodes, onHoverConstraint }: SceneProps) {
+function Scene({ decision, activeConstraints, affectingIds, reasonCodes, isPaused, onHoverConstraint }: SceneProps) {
   const decisionColor = DECISION_COLOR[decision] ?? '#22d3ee'
 
   const syntheticNodes = useMemo(() =>
@@ -249,10 +253,10 @@ function Scene({ decision, activeConstraints, affectingIds, reasonCodes, onHover
       <pointLight position={[2, 2, 2]} color={decisionColor} intensity={0.8} />
       <pointLight position={[-2, -1, -2]} color="#ffffff" intensity={0.4} />
 
-      <DecisionCore decisionColor={decisionColor} affectingCount={affectingCount} />
+      <DecisionCore decisionColor={decisionColor} affectingCount={affectingCount} isPaused={isPaused} />
 
       {totalNodes === 0 ? (
-        <IdleParticleCloud />
+        <IdleParticleCloud isPaused={isPaused} />
       ) : (
         <>
           {activeConstraints.map((constraint) => (
@@ -260,6 +264,7 @@ function Scene({ decision, activeConstraints, affectingIds, reasonCodes, onHover
               key={constraint.id}
               constraint={constraint}
               affecting={affectingIds.has(constraint.id)}
+              isPaused={isPaused}
               onHover={onHoverConstraint}
             />
           ))}
@@ -268,6 +273,7 @@ function Scene({ decision, activeConstraints, affectingIds, reasonCodes, onHover
               key={code}
               code={code}
               color={REASON_CODE_COLOR[code]}
+              isPaused={isPaused}
               onHover={onHoverConstraint}
             />
           ))}
@@ -297,6 +303,7 @@ export default function BrainCanvas({ decision, reasonCodes, speedKmh, activeCon
   const [hoveredConstraint, setHoveredConstraint] = useState<HoveredNode | null>(null)
   const orbitRef = useRef<OrbitControlsImpl>(null)
   const affectingIds = useMemo(() => new Set(affectingConstraintIds), [affectingConstraintIds])
+  const isPaused = !!hoveredConstraint
 
   const hoveredColor = hoveredConstraint
     ? isReasonCodeHover(hoveredConstraint)
@@ -313,7 +320,7 @@ export default function BrainCanvas({ decision, reasonCodes, speedKmh, activeCon
       >
         <OrbitControls
           ref={orbitRef as any}
-          autoRotate={autoRotate}
+          autoRotate={autoRotate && !isPaused}
           autoRotateSpeed={0.4}
           enableZoom
           minDistance={2}
@@ -325,6 +332,7 @@ export default function BrainCanvas({ decision, reasonCodes, speedKmh, activeCon
           activeConstraints={activeConstraints}
           affectingIds={affectingIds}
           reasonCodes={reasonCodes}
+          isPaused={isPaused}
           onHoverConstraint={setHoveredConstraint}
         />
       </Canvas>
