@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Marker, Tooltip } from 'react-leaflet'
 import L from 'leaflet'
 import { useUIStore } from '../../store/ui.store'
@@ -35,11 +36,41 @@ function vehicleIcon(decision: string, connected: boolean, heading: number, isSe
   return L.divIcon({ html: svg, className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2] })
 }
 
+const INTERP_MS = 900 // slightly less than 1s report interval
+
 export default function VehicleMarker({ vehicle }: { vehicle: VehicleStatus }) {
   const { setSelectedVehicle, selectedVehicleId } = useUIStore()
   const isSelected = selectedVehicleId === vehicle.vehicleId
+  const markerRef = useRef<L.Marker>(null)
+  const rafRef = useRef(0)
+  const prevPos = useRef<[number, number]>([vehicle.position.lat, vehicle.position.lng])
+
+  useEffect(() => {
+    const marker = markerRef.current
+    if (!marker) return
+
+    const from = L.latLng(prevPos.current[0], prevPos.current[1])
+    const to = L.latLng(vehicle.position.lat, vehicle.position.lng)
+    prevPos.current = [vehicle.position.lat, vehicle.position.lng]
+
+    // Jump marker back to 'from' (react-leaflet already set it to 'to'), then glide
+    marker.setLatLng(from)
+    cancelAnimationFrame(rafRef.current)
+
+    const started = performance.now()
+    const step = (now: number) => {
+      const t = Math.min((now - started) / INTERP_MS, 1)
+      const e = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t // ease in-out quad
+      marker.setLatLng([from.lat + (to.lat - from.lat) * e, from.lng + (to.lng - from.lng) * e])
+      if (t < 1) rafRef.current = requestAnimationFrame(step)
+    }
+    rafRef.current = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [vehicle.position.lat, vehicle.position.lng])
+
   return (
     <Marker
+      ref={markerRef as any}
       position={[vehicle.position.lat, vehicle.position.lng]}
       icon={vehicleIcon(vehicle.decision, vehicle.connected, vehicle.position.heading, isSelected)}
       eventHandlers={{ click: () => setSelectedVehicle(isSelected ? null : vehicle.vehicleId) }}
