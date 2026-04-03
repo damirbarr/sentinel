@@ -44,10 +44,12 @@ export default function VehicleMarker({ vehicle }: { vehicle: VehicleStatus }) {
       icon={vehicleIcon(vehicle.decision, vehicle.connected, vehicle.position.heading, isSelected)}
       eventHandlers={{ click: () => setSelectedVehicle(isSelected ? null : vehicle.vehicleId) }}
     >
-      <Tooltip permanent={isSelected} direction="top" offset={[0, -20]}>
-        <div className="text-xs">
-          <div className="font-bold font-mono text-white">{vehicle.vehicleId}</div>
-          <div className="text-slate-400 font-mono">{vehicle.speedKmh.toFixed(0)} km/h</div>
+      <Tooltip permanent={isSelected} direction="top" offset={[0, -20]}
+        className="!bg-[#0e0b1e] !border-[rgba(255,255,255,0.12)] !rounded !shadow-none before:!border-t-[#0e0b1e]"
+      >
+        <div style={{ fontFamily: 'monospace', fontSize: '11px', lineHeight: 1.4 }}>
+          <div style={{ fontWeight: 700, color: '#e2e8f0' }}>{vehicle.vehicleId}</div>
+          <div style={{ color: '#94a3b8' }}>{vehicle.speedKmh.toFixed(0)} km/h</div>
         </div>
       </Tooltip>
     </Marker>

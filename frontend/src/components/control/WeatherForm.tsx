@@ -28,7 +28,7 @@ export default function WeatherForm() {
           ...(pendingWeatherCenter ? { center: pendingWeatherCenter, radiusMeters: pendingWeatherRadius } : {}),
         }
       })
-      // Keep pendingWeatherCenter visible until user clicks Cancel
+      setPendingWeatherCenter(null)
       setPlacingWeather(false)
     } catch (err) { setError((err as Error).message) }
     finally { setSubmitting(false) }
