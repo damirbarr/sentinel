@@ -16,6 +16,7 @@ interface UIState {
   settingMaxConstraintDistance: number
   settingSpeedDegradationPct: number
   settingAutoRotateBrain: boolean
+  settingVizMode: 'brain' | 'atom'
   followingVehicleId: string | null
   setSelectedVehicle: (id: string | null) => void
   setTimelineOpen: (open: boolean) => void
@@ -31,6 +32,7 @@ interface UIState {
   setSettingMaxConstraintDistance: (v: number) => void
   setSettingSpeedDegradationPct: (v: number) => void
   setSettingAutoRotateBrain: (v: boolean) => void
+  setSettingVizMode: (v: 'brain' | 'atom') => void
   setFollowingVehicle: (id: string | null) => void
 }
 
@@ -49,6 +51,7 @@ export const useUIStore = create<UIState>((set) => ({
   settingMaxConstraintDistance: 0,
   settingSpeedDegradationPct: 25,
   settingAutoRotateBrain: true,
+  settingVizMode: 'brain' as 'brain' | 'atom',
   followingVehicleId: null,
   setSelectedVehicle: (id) => set({ selectedVehicleId: id }),
   setTimelineOpen: (open) => set({ timelineOpen: open }),
@@ -64,5 +67,6 @@ export const useUIStore = create<UIState>((set) => ({
   setSettingMaxConstraintDistance: (v) => set({ settingMaxConstraintDistance: v }),
   setSettingSpeedDegradationPct: (v) => set({ settingSpeedDegradationPct: v }),
   setSettingAutoRotateBrain: (v) => set({ settingAutoRotateBrain: v }),
+  setSettingVizMode: (v) => set({ settingVizMode: v }),
   setFollowingVehicle: (id) => set({ followingVehicleId: id }),
 }))

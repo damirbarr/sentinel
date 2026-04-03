@@ -2,7 +2,9 @@ import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useVehiclesStore } from '../../store/vehicles.store'
 import { useEventsStore } from '../../store/events.store'
+import { useUIStore } from '../../store/ui.store'
 import BrainCanvas from './BrainCanvas'
+import AtomCanvas from './AtomCanvas'
 import type { DecisionState, ActiveEvent, WeatherPayload, GeofencePayload, NetworkPayload } from '../../types'
 
 function typeClass(type: string) {
@@ -110,6 +112,8 @@ function SignalBadge({ code, meta, description }: { code: string; meta: { label:
 export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
   const vehicle = useVehiclesStore((s) => s.vehicles[vehicleId])
   const events = useEventsStore((s) => s.events)
+  const { settingVizMode, settingAutoRotateBrain } = useUIStore()
+  const VizCanvas = settingVizMode === 'atom' ? AtomCanvas : BrainCanvas
   const [fullscreen, setFullscreen] = useState(false)
 
   if (!vehicle) return null
@@ -140,11 +144,12 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
               ⊡ EXIT
             </button>
           </div>
-          <BrainCanvas
+          <VizCanvas
             decision={vehicle.decision}
             reasonCodes={vehicle.reasonCodes}
             speedKmh={vehicle.speedKmh}
             activeConstraints={activeConstraints}
+            autoRotate={settingAutoRotateBrain}
             fullscreen
           />
         </div>
@@ -243,11 +248,12 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
             ⊞ FULL
           </button>
         </div>
-        <BrainCanvas
+        <VizCanvas
           decision={vehicle.decision}
           reasonCodes={vehicle.reasonCodes}
           speedKmh={vehicle.speedKmh}
           activeConstraints={activeConstraints}
+          autoRotate={settingAutoRotateBrain}
         />
         <div className={`mt-2 w-full rounded-md border p-3 ${DECISION_COLOR[vehicle.decision]}`}>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-current opacity-70 mb-1">Decision State</p>

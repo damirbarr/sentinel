@@ -7,9 +7,11 @@ export default function SettingsModal() {
     settingMaxConstraintDistance,
     settingSpeedDegradationPct,
     settingAutoRotateBrain,
+    settingVizMode,
     setSettingMaxConstraintDistance,
     setSettingSpeedDegradationPct,
     setSettingAutoRotateBrain,
+    setSettingVizMode,
   } = useUIStore()
 
   if (!settingsOpen) return null
@@ -74,6 +76,28 @@ export default function SettingsModal() {
                 className="flex-1 accent-accent-blue"
               />
               <span className="text-sm font-mono font-bold text-accent-blue w-10 text-right">{settingSpeedDegradationPct}%</span>
+            </div>
+          </div>
+
+          {/* Visualization mode */}
+          <div>
+            <p className="text-xs font-semibold text-slate-300 mb-0.5">Visualization</p>
+            <p className="text-[10px] text-slate-500 mb-2">Cognition display style.</p>
+            <div className="flex gap-2">
+              {(['brain', 'atom'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setSettingVizMode(mode)}
+                  className={`flex-1 py-1.5 rounded-lg border text-xs font-semibold transition-colors capitalize ${
+                    settingVizMode === mode
+                      ? 'bg-white text-surface border-white'
+                      : 'bg-transparent text-slate-500 border-surface-border hover:text-slate-300'
+                  }`}
+                >
+                  {mode === 'brain' ? '⬡ Brain' : '⚛ Atom'}
+                </button>
+              ))}
             </div>
           </div>
 

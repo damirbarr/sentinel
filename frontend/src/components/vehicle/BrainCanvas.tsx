@@ -46,6 +46,8 @@ const REASON_CODE_GROUP: Record<string, string> = {
   MULTI_FACTOR_RISK: 'INTERNAL',
 }
 
+function easeOutCubic(t: number) { return 1 - Math.pow(1 - t, 3) }
+
 // Synthetic hover object type
 interface ReasonCodeHover {
   id: string
@@ -146,9 +148,17 @@ interface ConstraintNodeProps {
 function ConstraintNode({ constraint, index, total, onHover }: ConstraintNodeProps) {
   const typeColor = TYPE_COLOR[constraint.type] ?? '#a78bfa'
   const nodePos = getNodePosition(index, total)
+  const groupRef = useRef<THREE.Group>(null)
+  const birthRef = useRef(-1)
+
+  useFrame(({ clock }) => {
+    if (birthRef.current < 0) birthRef.current = clock.getElapsedTime()
+    const progress = easeOutCubic(Math.min((clock.getElapsedTime() - birthRef.current) / 0.5, 1))
+    groupRef.current?.scale.setScalar(progress)
+  })
 
   return (
-    <group>
+    <group ref={groupRef}>
       {/* Glowing sphere */}
       <Sphere
         args={[0.12, 12, 12]}
@@ -190,9 +200,17 @@ interface ReasonCodeNodeProps {
 function ReasonCodeNode({ code, index, total, color, onHover }: ReasonCodeNodeProps) {
   const nodePos = getNodePosition(index, total)
   const group = REASON_CODE_GROUP[code] ?? 'INTERNAL'
+  const groupRef = useRef<THREE.Group>(null)
+  const birthRef = useRef(-1)
+
+  useFrame(({ clock }) => {
+    if (birthRef.current < 0) birthRef.current = clock.getElapsedTime()
+    const progress = easeOutCubic(Math.min((clock.getElapsedTime() - birthRef.current) / 0.5, 1))
+    groupRef.current?.scale.setScalar(progress)
+  })
 
   return (
-    <group>
+    <group ref={groupRef}>
       {/* Glowing sphere */}
       <Sphere
         args={[0.12, 12, 12]}
@@ -337,9 +355,10 @@ export interface BrainCanvasProps {
   speedKmh: number
   activeConstraints: ActiveEvent[]
   fullscreen?: boolean
+  autoRotate?: boolean
 }
 
-export default function BrainCanvas({ decision, reasonCodes, speedKmh, activeConstraints, fullscreen }: BrainCanvasProps) {
+export default function BrainCanvas({ decision, reasonCodes, speedKmh, activeConstraints, fullscreen, autoRotate = true }: BrainCanvasProps) {
   const [hoveredConstraint, setHoveredConstraint] = useState<HoveredNode | null>(null)
   const orbitRef = useRef<OrbitControlsImpl>(null)
 
@@ -358,7 +377,7 @@ export default function BrainCanvas({ decision, reasonCodes, speedKmh, activeCon
       >
         <OrbitControls
           ref={orbitRef as any}
-          autoRotate
+          autoRotate={autoRotate}
           autoRotateSpeed={0.4}
           enableZoom={true}
           minDistance={2}
