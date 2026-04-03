@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useMemo } from 'react'
 import { Marker, Tooltip } from 'react-leaflet'
 import L from 'leaflet'
 import { useUIStore } from '../../store/ui.store'
@@ -38,12 +38,16 @@ export default function VehicleMarker({ vehicle }: { vehicle: VehicleStatus }) {
   const { setSelectedVehicle, selectedVehicleId, setFollowingVehicle } = useUIStore()
   const isSelected = selectedVehicleId === vehicle.vehicleId
   const markerRef = useRef<L.Marker>(null)
+  const icon = useMemo(
+    () => vehicleIcon(vehicle.decision, vehicle.connected, vehicle.position.heading, isSelected),
+    [vehicle.decision, vehicle.connected, vehicle.position.heading, isSelected]
+  )
 
   return (
     <Marker
       ref={markerRef as any}
       position={[vehicle.position.lat, vehicle.position.lng]}
-      icon={vehicleIcon(vehicle.decision, vehicle.connected, vehicle.position.heading, isSelected)}
+      icon={icon}
       eventHandlers={{ click: () => {
         if (isSelected) {
           setSelectedVehicle(null)

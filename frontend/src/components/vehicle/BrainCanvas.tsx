@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState } from 'react'
+import { useRef, useMemo, useState, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Sphere, Line, Points, PointMaterial } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
@@ -304,6 +304,15 @@ export default function BrainCanvas({ decision, reasonCodes, speedKmh, activeCon
   const orbitRef = useRef<OrbitControlsImpl>(null)
   const affectingIds = useMemo(() => new Set(affectingConstraintIds), [affectingConstraintIds])
   const isPaused = !!hoveredConstraint
+
+  useEffect(() => {
+    if (!hoveredConstraint) return
+    if (isReasonCodeHover(hoveredConstraint)) {
+      if (!reasonCodes.includes(hoveredConstraint.id as ReasonCode)) setHoveredConstraint(null)
+    } else {
+      if (!activeConstraints.find(c => c.id === (hoveredConstraint as ActiveEvent).id)) setHoveredConstraint(null)
+    }
+  }, [activeConstraints, reasonCodes, hoveredConstraint])
 
   const hoveredColor = hoveredConstraint
     ? isReasonCodeHover(hoveredConstraint)

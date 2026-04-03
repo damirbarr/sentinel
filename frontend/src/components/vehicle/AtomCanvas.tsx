@@ -1,6 +1,6 @@
-import { useRef, useMemo, useState } from 'react'
+import { useRef, useMemo, useState, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Line, Points, PointMaterial } from '@react-three/drei'
+import { OrbitControls, Trail, Points, PointMaterial } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
@@ -71,7 +71,7 @@ function easeOutCubic(t: number) { return 1 - Math.pow(1 - t, 3) }
 
 // ─── Hover types ──────────────────────────────────────────────────────────────
 
-interface HoverInfo { type: string; label: string; color: string }
+interface HoverInfo { id: string; type: string; label: string; color: string }
 
 // ─── Atom Nucleus ─────────────────────────────────────────────────────────────
 
@@ -120,7 +120,6 @@ interface ElectronOrbitProps {
 function ElectronOrbit({ nodeId, color, targetStability, affecting, isPaused, onHover, hoverInfo }: ElectronOrbitProps) {
   const groupRef    = useRef<THREE.Group>(null)
   const electronRef = useRef<THREE.Mesh>(null)
-  const ringMatRef  = useRef<THREE.MeshStandardMaterial>(null)
   const elecMatRef  = useRef<THREE.MeshStandardMaterial>(null)
   // Frozen time: advances only when not paused — ensures smooth resume with no position jump
   const frozenT     = useRef(0)
@@ -143,17 +142,8 @@ function ElectronOrbit({ nodeId, color, targetStability, affecting, isPaused, on
 
   const colorObj = useMemo(() => new THREE.Color(color), [color])
 
-  // Guide ring: thin circle at primary orbit radius, in orbit plane
-  const ringPoints = useMemo<[number, number, number][]>(() => {
-    const pts: [number, number, number][] = []
-    for (let i = 0; i <= 80; i++) {
-      const a = (i / 80) * Math.PI * 2
-      pts.push([R1 * Math.cos(a), R1 * Math.sin(a), 0])
-    }
-    return pts
-  }, [R1])
-
-  const ringOpacity = affecting ? 0.12 : 0.04
+  const trailWidth  = affecting ? 0.04 : 0.01
+  const trailLength = affecting ? 16   : 6
   const elecOpacity = affecting ? 1.0  : 0.15
   const elecEmit    = affecting ? 1.4  : 0.2
   const elecR       = affecting ? 0.08 : 0.04
@@ -195,7 +185,6 @@ function ElectronOrbit({ nodeId, color, targetStability, affecting, isPaused, on
       electronRef.current.position.set(ex, ey, ez)
     }
 
-    if (ringMatRef.current)  ringMatRef.current.opacity = entry * ringOpacity
     if (elecMatRef.current) {
       elecMatRef.current.opacity = entry * elecOpacity
       elecMatRef.current.emissiveIntensity = entry * elecEmit
@@ -204,30 +193,29 @@ function ElectronOrbit({ nodeId, color, targetStability, affecting, isPaused, on
 
   return (
     <group ref={groupRef}>
-      {/* Faint guide ring (thin circle at primary orbit radius) */}
-      <Line
-        points={ringPoints}
+      <Trail
+        width={trailWidth}
+        length={trailLength}
         color={color}
-        lineWidth={affecting ? 0.6 : 0.3}
-        transparent
-        opacity={ringOpacity}
-      />
-      {/* Electron sphere */}
-      <mesh
-        ref={electronRef}
-        onPointerOver={(e) => { e.stopPropagation(); onHover(hoverInfo) }}
-        onPointerOut={() => onHover(null)}
+        attenuation={(t) => t * t}
+        decay={1}
       >
-        <sphereGeometry args={[elecR, 10, 10]} />
-        <meshStandardMaterial
-          ref={elecMatRef}
-          color={colorObj}
-          emissive={colorObj}
-          emissiveIntensity={elecEmit}
-          transparent
-          opacity={elecOpacity}
-        />
-      </mesh>
+        <mesh
+          ref={electronRef}
+          onPointerOver={(e) => { e.stopPropagation(); onHover(hoverInfo) }}
+          onPointerOut={() => onHover(null)}
+        >
+          <sphereGeometry args={[elecR, 10, 10]} />
+          <meshStandardMaterial
+            ref={elecMatRef}
+            color={colorObj}
+            emissive={colorObj}
+            emissiveIntensity={elecEmit}
+            transparent
+            opacity={elecOpacity}
+          />
+        </mesh>
+      </Trail>
     </group>
   )
 }
@@ -291,13 +279,13 @@ function AtomScene({ decision, activeConstraints, affectingIds, reasonCodes, isP
       id: c.id,
       color: TYPE_COLOR[c.type] ?? '#a78bfa',
       affecting: affectingIds.has(c.id),
-      hoverInfo: { type: c.type, label: getConstraintSummary(c), color: TYPE_COLOR[c.type] ?? '#a78bfa' },
+      hoverInfo: { id: c.id, type: c.type, label: getConstraintSummary(c), color: TYPE_COLOR[c.type] ?? '#a78bfa' },
     })),
     ...syntheticNodes.map((code) => ({
       id: code,
       color: REASON_CODE_COLOR[code],
       affecting: true,
-      hoverInfo: { type: REASON_CODE_GROUP[code] ?? 'INTERNAL', label: code.replace(/_/g, ' '), color: REASON_CODE_COLOR[code] },
+      hoverInfo: { id: code, type: REASON_CODE_GROUP[code] ?? 'INTERNAL', label: code.replace(/_/g, ' '), color: REASON_CODE_COLOR[code] },
     })),
   ], [activeConstraints, affectingIds, syntheticNodes])
 
@@ -340,6 +328,20 @@ export default function AtomCanvas({ decision, reasonCodes, speedKmh, activeCons
   const orbitRef = useRef<OrbitControlsImpl>(null)
   const affectingIds = useMemo(() => new Set(affectingConstraintIds), [affectingConstraintIds])
   const isPaused = !!hovered
+
+  useEffect(() => {
+    if (!hovered) return
+    const allIds = new Set([
+      ...activeConstraints.map(c => c.id),
+      ...reasonCodes.filter(code => {
+        if (code.startsWith('WEATHER_') || code.startsWith('GEOFENCE_') ||
+            code === 'IN_GEOFENCE_FORBIDDEN_ZONE' || code === 'IN_GEOFENCE_CAUTION_ZONE' ||
+            code === 'IN_GEOFENCE_SLOW_ZONE' || code === 'GEOFENCE_AHEAD') return false
+        return true
+      })
+    ])
+    if (!allIds.has(hovered.id)) setHovered(null)
+  }, [activeConstraints, reasonCodes, hovered])
 
   return (
     <div style={{ position: 'relative', height: fullscreen ? '100vh' : '260px', userSelect: 'none' }}>

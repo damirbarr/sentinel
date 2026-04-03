@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { LatLng } from '../types'
 
 interface UIState {
@@ -36,37 +37,50 @@ interface UIState {
   setFollowingVehicle: (id: string | null) => void
 }
 
-export const useUIStore = create<UIState>((set) => ({
-  selectedVehicleId: null,
-  timelineOpen: false,
-  isDrawingGeofence: false,
-  pendingPolygon: null,
-  isPlacingWeather: false,
-  pendingWeatherCenter: null,
-  pendingWeatherRadius: 2000,
-  weatherHoverCenter: null,
-  highlightedConstraintId: null,
-  mapFlyTarget: null,
-  settingsOpen: false,
-  settingMaxConstraintDistance: 0,
-  settingSpeedDegradationPct: 25,
-  settingAutoRotateBrain: true,
-  settingVizMode: 'brain' as 'brain' | 'atom',
-  followingVehicleId: null,
-  setSelectedVehicle: (id) => set({ selectedVehicleId: id }),
-  setTimelineOpen: (open) => set({ timelineOpen: open }),
-  setDrawingGeofence: (drawing) => set({ isDrawingGeofence: drawing }),
-  setPendingPolygon: (polygon) => set({ pendingPolygon: polygon }),
-  setPlacingWeather: (placing) => set({ isPlacingWeather: placing }),
-  setPendingWeatherCenter: (center) => set({ pendingWeatherCenter: center }),
-  setPendingWeatherRadius: (radius) => set({ pendingWeatherRadius: radius }),
-  setWeatherHoverCenter: (center) => set({ weatherHoverCenter: center }),
-  setHighlightedConstraintId: (id) => set({ highlightedConstraintId: id }),
-  setMapFlyTarget: (target) => set({ mapFlyTarget: target }),
-  toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),
-  setSettingMaxConstraintDistance: (v) => set({ settingMaxConstraintDistance: v }),
-  setSettingSpeedDegradationPct: (v) => set({ settingSpeedDegradationPct: v }),
-  setSettingAutoRotateBrain: (v) => set({ settingAutoRotateBrain: v }),
-  setSettingVizMode: (v) => set({ settingVizMode: v }),
-  setFollowingVehicle: (id) => set({ followingVehicleId: id }),
-}))
+export const useUIStore = create<UIState>()(
+  persist(
+    (set) => ({
+      selectedVehicleId: null,
+      timelineOpen: false,
+      isDrawingGeofence: false,
+      pendingPolygon: null,
+      isPlacingWeather: false,
+      pendingWeatherCenter: null,
+      pendingWeatherRadius: 2000,
+      weatherHoverCenter: null,
+      highlightedConstraintId: null,
+      mapFlyTarget: null,
+      settingsOpen: false,
+      settingMaxConstraintDistance: 0,
+      settingSpeedDegradationPct: 25,
+      settingAutoRotateBrain: true,
+      settingVizMode: 'brain' as 'brain' | 'atom',
+      followingVehicleId: null,
+      setSelectedVehicle: (id) => set({ selectedVehicleId: id }),
+      setTimelineOpen: (open) => set({ timelineOpen: open }),
+      setDrawingGeofence: (drawing) => set({ isDrawingGeofence: drawing }),
+      setPendingPolygon: (polygon) => set({ pendingPolygon: polygon }),
+      setPlacingWeather: (placing) => set({ isPlacingWeather: placing }),
+      setPendingWeatherCenter: (center) => set({ pendingWeatherCenter: center }),
+      setPendingWeatherRadius: (radius) => set({ pendingWeatherRadius: radius }),
+      setWeatherHoverCenter: (center) => set({ weatherHoverCenter: center }),
+      setHighlightedConstraintId: (id) => set({ highlightedConstraintId: id }),
+      setMapFlyTarget: (target) => set({ mapFlyTarget: target }),
+      toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),
+      setSettingMaxConstraintDistance: (v) => set({ settingMaxConstraintDistance: v }),
+      setSettingSpeedDegradationPct: (v) => set({ settingSpeedDegradationPct: v }),
+      setSettingAutoRotateBrain: (v) => set({ settingAutoRotateBrain: v }),
+      setSettingVizMode: (v) => set({ settingVizMode: v }),
+      setFollowingVehicle: (id) => set({ followingVehicleId: id }),
+    }),
+    {
+      name: 'sentinel-settings',
+      partialize: (state) => ({
+        settingMaxConstraintDistance: state.settingMaxConstraintDistance,
+        settingSpeedDegradationPct: state.settingSpeedDegradationPct,
+        settingAutoRotateBrain: state.settingAutoRotateBrain,
+        settingVizMode: state.settingVizMode,
+      }),
+    }
+  )
+)
