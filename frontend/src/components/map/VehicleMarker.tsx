@@ -39,7 +39,7 @@ function vehicleIcon(decision: string, connected: boolean, heading: number, isSe
 const INTERP_MS = 1800 // slightly less than 2s report interval
 
 export default function VehicleMarker({ vehicle }: { vehicle: VehicleStatus }) {
-  const { setSelectedVehicle, selectedVehicleId } = useUIStore()
+  const { setSelectedVehicle, selectedVehicleId, setFollowingVehicle } = useUIStore()
   const isSelected = selectedVehicleId === vehicle.vehicleId
   const markerRef = useRef<L.Marker>(null)
   const rafRef = useRef(0)
@@ -74,7 +74,14 @@ export default function VehicleMarker({ vehicle }: { vehicle: VehicleStatus }) {
         ref={markerRef as any}
         position={[vehicle.position.lat, vehicle.position.lng]}
         icon={vehicleIcon(vehicle.decision, vehicle.connected, vehicle.position.heading, isSelected)}
-        eventHandlers={{ click: () => setSelectedVehicle(isSelected ? null : vehicle.vehicleId) }}
+        eventHandlers={{ click: () => {
+          if (isSelected) {
+            setSelectedVehicle(null)
+            setFollowingVehicle(null)
+          } else {
+            setSelectedVehicle(vehicle.vehicleId)
+          }
+        } }}
       >
         <Tooltip permanent={isSelected} direction="top" offset={[0, -20]}
           className="!bg-[#0e0b1e] !border-[rgba(255,255,255,0.12)] !rounded !shadow-none before:!border-t-[#0e0b1e]"

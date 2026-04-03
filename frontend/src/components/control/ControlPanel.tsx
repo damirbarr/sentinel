@@ -27,7 +27,7 @@ export default function ControlPanel() {
           <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1.5 px-1">Fleet</p>
           <div className="space-y-1 max-h-48 overflow-y-auto scrollbar-thin">
             {vehicleList.map((v) => (
-              <button key={v.vehicleId} onClick={() => setSelectedVehicle(v.vehicleId)}
+              <button key={v.vehicleId} onClick={() => setSelectedVehicle(selectedVehicleId === v.vehicleId ? null : v.vehicleId)}
                 className={`group/row w-full flex items-center gap-2 px-1.5 py-1 rounded-lg text-left transition-colors ${
                   selectedVehicleId === v.vehicleId
                     ? 'bg-accent-blue/20 border border-accent-cyan/40 shadow-[0_0_8px_rgba(34,211,238,0.15)]'
