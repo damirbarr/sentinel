@@ -6,6 +6,7 @@ BACKEND_URL     ?= ws://localhost:3001/ws/sentinels
 START_LAT       ?= 37.7749
 START_LNG       ?= -122.4194
 MAX_DISTANCE_KM ?= 1
+CHAOS           ?= 0
 
 MOCK_DIR     := sentinel-mock
 VENV         := $(MOCK_DIR)/.venv
@@ -52,7 +53,8 @@ mock: venv-check
 		--backend-url $(BACKEND_URL) \
 		--lat $(START_LAT) \
 		--lng $(START_LNG) \
-		$(if $(filter-out 0,$(MAX_DISTANCE_KM)),--max-constraint-distance $(MAX_DISTANCE_KM),)
+		$(if $(filter-out 0,$(MAX_DISTANCE_KM)),--max-constraint-distance $(MAX_DISTANCE_KM),) \
+		$(if $(filter 1,$(CHAOS)),--chaos,)
 
 mock-2: venv-check
 	$(MAKE) -j2 \

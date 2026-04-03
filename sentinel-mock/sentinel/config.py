@@ -11,6 +11,7 @@ class SentinelConfig:
     start_lat: float
     start_lng: float
     max_constraint_distance_km: float  # 0 = disabled
+    chaos_mode: bool
 
 
 def parse_config() -> SentinelConfig:
@@ -22,6 +23,8 @@ def parse_config() -> SentinelConfig:
     parser.add_argument('--lng', type=float, default=-122.4194)
     parser.add_argument('--max-constraint-distance', type=float, default=1.0,
         help='Ignore geofence/weather constraints whose nearest point is farther than this (km). 0 = disabled.')
+    parser.add_argument('--chaos', action='store_true', default=False,
+        help='Randomly simulate internal signals every ~5 seconds.')
     args = parser.parse_args()
     return SentinelConfig(
         vehicle_id=args.vehicle_id,
@@ -30,4 +33,5 @@ def parse_config() -> SentinelConfig:
         start_lat=args.lat,
         start_lng=args.lng,
         max_constraint_distance_km=args.max_constraint_distance,
+        chaos_mode=args.chaos,
     )

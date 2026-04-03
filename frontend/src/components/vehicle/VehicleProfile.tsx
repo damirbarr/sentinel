@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useVehiclesStore } from '../../store/vehicles.store'
 import { useEventsStore } from '../../store/events.store'
 import BrainCanvas from './BrainCanvas'
@@ -43,6 +44,48 @@ const REASON_DESCRIPTIONS: Record<string, string> = {
   PERCEPTION_ALARM:           'Operator-triggered perception alarm',
   SENSOR_OBSTACLE_DETECTED:   'Obstacle in path — emergency stop active',
   SENSOR_FAULT:               'Sensor reporting malfunction or unreliable data',
+}
+
+function SignalBadge({ code, meta, description }: { code: string; meta: { label: string; color: string }; description: string }) {
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
+  const spanRef = useRef<HTMLSpanElement>(null)
+  return (
+    <div className="relative">
+      <span
+        ref={spanRef}
+        onMouseEnter={() => {
+          const r = spanRef.current?.getBoundingClientRect()
+          if (r) setTooltipPos({ x: r.left + r.width / 2, y: r.top - 6 })
+        }}
+        onMouseLeave={() => setTooltipPos(null)}
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold cursor-default ${meta.color}`}
+      >
+        <span className="w-1 h-1 rounded-full bg-current" />
+        {meta.label}
+      </span>
+      {tooltipPos && createPortal(
+        <div style={{
+          position: 'fixed',
+          left: tooltipPos.x,
+          top: tooltipPos.y,
+          transform: 'translate(-50%, -100%)',
+          zIndex: 9999,
+          background: 'rgba(7,6,15,0.95)',
+          border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: 4,
+          padding: '4px 8px',
+          fontSize: 10,
+          fontFamily: 'monospace',
+          color: '#fff',
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none',
+        }}>
+          {description}
+        </div>,
+        document.body
+      )}
+    </div>
+  )
 }
 
 export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
@@ -96,16 +139,9 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
                 <div className="flex flex-wrap gap-1.5">
                   {vehicle.reasonCodes.map((code) => {
                     const meta = REASON_META[code] ?? { label: code, color: 'text-slate-400 bg-slate-400/10 border-slate-400/20' }
+                    const description = REASON_DESCRIPTIONS[code] ?? code
                     return (
-                      <div key={code} className="relative group">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${meta.color}`}>
-                          <span className="w-1 h-1 rounded-full bg-current" />
-                          {meta.label}
-                        </span>
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                          {REASON_DESCRIPTIONS[code] ?? code}
-                        </div>
-                      </div>
+                      <SignalBadge key={code} code={code} meta={meta} description={description} />
                     )
                   })}
                 </div>
@@ -189,17 +225,9 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
           <div className="flex flex-wrap gap-1.5">
             {vehicle.reasonCodes.map((code) => {
               const meta = REASON_META[code] ?? { label: code, color: 'text-slate-400 bg-slate-400/10 border-slate-400/20' }
+              const description = REASON_DESCRIPTIONS[code] ?? code
               return (
-                <div key={code} className="relative group">
-                  <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${meta.color}`}>
-                    <span className="w-1 h-1 rounded-full bg-current" />
-                    {meta.label}
-                  </span>
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                    {REASON_DESCRIPTIONS[code] ?? code}
-                  </div>
-                </div>
+                <SignalBadge key={code} code={code} meta={meta} description={description} />
               )
             })}
           </div>

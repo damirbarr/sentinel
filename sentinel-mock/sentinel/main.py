@@ -98,6 +98,32 @@ async def interactive_console(vehicle_id: str, reporter, stop_event: asyncio.Eve
             logger.error(f'Interactive console error: {e}')
 
 
+async def chaos_loop(vehicle_id: str, reporter, stop_event: asyncio.Event) -> None:
+    import random
+    SIGNALS = [
+        ('SIMULATE_PERCEPTION_ALARM', {'message': 'Chaos: perception fault'}),
+        ('SIMULATE_NETWORK_DEGRADED', {}),
+        ('SIMULATE_NETWORK_LOST', {}),
+        ('SIMULATE_OBSTACLE_DETECTED', {}),
+        ('SIMULATE_SENSOR_FAULT', {'description': 'Chaos: sensor malfunction'}),
+        ('CLEAR_SIMULATION', {}),
+        ('CLEAR_SIMULATION', {}),  # weight clear higher so it doesn't stack up
+    ]
+    logger.info(f'[{vehicle_id}] Chaos mode active — random signals every ~5s')
+    while not stop_event.is_set():
+        delay = random.uniform(3.0, 7.0)
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=delay)
+            break  # stop_event was set
+        except asyncio.TimeoutError:
+            pass
+        if stop_event.is_set():
+            break
+        cmd, payload = random.choice(SIGNALS)
+        await reporter._handle_command(cmd, payload)
+        logger.info(f'[{vehicle_id}] Chaos: sent {cmd}')
+
+
 async def run(config) -> None:
     loop = asyncio.get_running_loop()
     stop_event = asyncio.Event()
@@ -135,6 +161,8 @@ async def run(config) -> None:
         asyncio.create_task(reporter.run_periodic_reporting()),
         asyncio.create_task(interactive_console(config.vehicle_id, reporter, stop_event)),
     ]
+    if config.chaos_mode:
+        tasks.append(asyncio.create_task(chaos_loop(config.vehicle_id, reporter, stop_event)))
 
     try:
         # Block until SIGINT/SIGTERM sets the stop event

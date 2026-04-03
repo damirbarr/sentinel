@@ -26,6 +26,39 @@ const TYPE_COLOR: Record<string, string> = {
   NETWORK: '#fb923c',
 }
 
+// Color map for synthetic reason code nodes
+const REASON_CODE_COLOR: Record<string, string> = {
+  NETWORK_POOR: '#fb923c',
+  NETWORK_LOST: '#fb923c',
+  PERCEPTION_ALARM: '#a78bfa',
+  SENSOR_OBSTACLE_DETECTED: '#f87171',
+  SENSOR_FAULT: '#f87171',
+  MULTI_FACTOR_RISK: '#a78bfa',
+}
+
+// Group map for synthetic reason code nodes
+const REASON_CODE_GROUP: Record<string, string> = {
+  NETWORK_POOR: 'NETWORK_INT',
+  NETWORK_LOST: 'NETWORK_INT',
+  PERCEPTION_ALARM: 'INTERNAL',
+  SENSOR_OBSTACLE_DETECTED: 'SENSOR',
+  SENSOR_FAULT: 'SENSOR',
+  MULTI_FACTOR_RISK: 'INTERNAL',
+}
+
+// Synthetic hover object type
+interface ReasonCodeHover {
+  id: string
+  type: string
+  label: string
+}
+
+type HoveredNode = ActiveEvent | ReasonCodeHover
+
+function isReasonCodeHover(h: HoveredNode): h is ReasonCodeHover {
+  return 'label' in h
+}
+
 function getNodePosition(index: number, total: number): [number, number, number] {
   const phi = Math.acos(1 - 2 * (index + 0.5) / Math.max(total, 1))
   const theta = Math.PI * (1 + Math.sqrt(5)) * index // golden angle
@@ -144,6 +177,52 @@ function ConstraintNode({ constraint, index, total, onHover }: ConstraintNodePro
   )
 }
 
+// ─── Reason Code Node ─────────────────────────────────────────────────────────
+
+interface ReasonCodeNodeProps {
+  code: string
+  index: number
+  total: number
+  color: string
+  onHover: (h: ReasonCodeHover | null) => void
+}
+
+function ReasonCodeNode({ code, index, total, color, onHover }: ReasonCodeNodeProps) {
+  const nodePos = getNodePosition(index, total)
+  const group = REASON_CODE_GROUP[code] ?? 'INTERNAL'
+
+  return (
+    <group>
+      {/* Glowing sphere */}
+      <Sphere
+        args={[0.12, 12, 12]}
+        position={nodePos}
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          onHover({ id: code, type: group, label: code.replace(/_/g, ' ') })
+        }}
+        onPointerOut={() => onHover(null)}
+      >
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={1.2}
+          metalness={0.5}
+        />
+      </Sphere>
+
+      {/* Beam from node → core */}
+      <Line
+        points={[nodePos, [0, 0, 0]]}
+        color={color}
+        lineWidth={1.5}
+        transparent
+        opacity={0.6}
+      />
+    </group>
+  )
+}
+
 // ─── Idle Particle Cloud ──────────────────────────────────────────────────────
 
 function IdleParticleCloud() {
@@ -189,11 +268,22 @@ function IdleParticleCloud() {
 interface SceneProps {
   decision: DecisionState
   activeConstraints: ActiveEvent[]
-  onHoverConstraint: (c: ActiveEvent | null) => void
+  reasonCodes: ReasonCode[]
+  onHoverConstraint: (c: HoveredNode | null) => void
 }
 
-function Scene({ decision, activeConstraints, onHoverConstraint }: SceneProps) {
+function Scene({ decision, activeConstraints, reasonCodes, onHoverConstraint }: SceneProps) {
   const decisionColor = DECISION_COLOR[decision] ?? '#22d3ee'
+
+  // Build synthetic reason code nodes: skip codes that are WEATHER_* or GEOFENCE_* (covered by constraint nodes)
+  const syntheticNodes = useMemo(() => {
+    return reasonCodes.filter((code) => {
+      if (code.startsWith('WEATHER_') || code.startsWith('GEOFENCE_') || code === 'IN_GEOFENCE_FORBIDDEN_ZONE' || code === 'IN_GEOFENCE_CAUTION_ZONE' || code === 'IN_GEOFENCE_SLOW_ZONE' || code === 'GEOFENCE_AHEAD') return false
+      return REASON_CODE_COLOR[code] !== undefined
+    })
+  }, [reasonCodes])
+
+  const totalNodes = activeConstraints.length + syntheticNodes.length
 
   return (
     <>
@@ -203,21 +293,33 @@ function Scene({ decision, activeConstraints, onHoverConstraint }: SceneProps) {
 
       <DecisionCore
         decisionColor={decisionColor}
-        activeConstraintsCount={activeConstraints.length}
+        activeConstraintsCount={totalNodes}
       />
 
-      {activeConstraints.length === 0 ? (
+      {totalNodes === 0 ? (
         <IdleParticleCloud />
       ) : (
-        activeConstraints.map((constraint, i) => (
-          <ConstraintNode
-            key={constraint.id}
-            constraint={constraint}
-            index={i}
-            total={activeConstraints.length}
-            onHover={onHoverConstraint}
-          />
-        ))
+        <>
+          {activeConstraints.map((constraint, i) => (
+            <ConstraintNode
+              key={constraint.id}
+              constraint={constraint}
+              index={i}
+              total={totalNodes}
+              onHover={onHoverConstraint}
+            />
+          ))}
+          {syntheticNodes.map((code, i) => (
+            <ReasonCodeNode
+              key={code}
+              code={code}
+              index={activeConstraints.length + i}
+              total={totalNodes}
+              color={REASON_CODE_COLOR[code]}
+              onHover={onHoverConstraint}
+            />
+          ))}
+        </>
       )}
 
       <EffectComposer>
@@ -237,9 +339,15 @@ export interface BrainCanvasProps {
   fullscreen?: boolean
 }
 
-export default function BrainCanvas({ decision, speedKmh, activeConstraints, fullscreen }: BrainCanvasProps) {
-  const [hoveredConstraint, setHoveredConstraint] = useState<ActiveEvent | null>(null)
+export default function BrainCanvas({ decision, reasonCodes, speedKmh, activeConstraints, fullscreen }: BrainCanvasProps) {
+  const [hoveredConstraint, setHoveredConstraint] = useState<HoveredNode | null>(null)
   const orbitRef = useRef<OrbitControlsImpl>(null)
+
+  const hoveredColor = hoveredConstraint
+    ? isReasonCodeHover(hoveredConstraint)
+      ? REASON_CODE_COLOR[hoveredConstraint.id] ?? '#a78bfa'
+      : TYPE_COLOR[(hoveredConstraint as ActiveEvent).type] ?? '#a78bfa'
+    : '#a78bfa'
 
   return (
     <div style={{ position: 'relative', height: fullscreen ? '100vh' : '260px', userSelect: 'none' }}>
@@ -260,6 +368,7 @@ export default function BrainCanvas({ decision, speedKmh, activeConstraints, ful
         <Scene
           decision={decision}
           activeConstraints={activeConstraints}
+          reasonCodes={reasonCodes}
           onHoverConstraint={setHoveredConstraint}
         />
       </Canvas>
@@ -290,17 +399,30 @@ export default function BrainCanvas({ decision, speedKmh, activeConstraints, ful
       {hoveredConstraint && (
         <div style={{
           position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)',
-          background: 'rgba(7,6,15,0.92)', border: `1px solid ${TYPE_COLOR[hoveredConstraint.type] ?? '#a78bfa'}40`,
+          background: 'rgba(7,6,15,0.92)', border: `1px solid ${hoveredColor}40`,
           borderRadius: 8, padding: '6px 12px', pointerEvents: 'none', zIndex: 10,
           backdropFilter: 'blur(8px)', whiteSpace: 'nowrap',
-          boxShadow: `0 0 12px ${TYPE_COLOR[hoveredConstraint.type] ?? '#a78bfa'}30`,
+          boxShadow: `0 0 12px ${hoveredColor}30`,
         }}>
-          <div style={{ color: TYPE_COLOR[hoveredConstraint.type] ?? '#a78bfa', fontFamily: 'monospace', fontSize: '10px', fontWeight: 'bold', marginBottom: 2 }}>
-            {hoveredConstraint.type}
-          </div>
-          <div style={{ color: '#cbd5e1', fontFamily: 'monospace', fontSize: '9px' }}>
-            {getConstraintSummary(hoveredConstraint)}
-          </div>
+          {isReasonCodeHover(hoveredConstraint) ? (
+            <>
+              <div style={{ color: hoveredColor, fontFamily: 'monospace', fontSize: '10px', fontWeight: 'bold', marginBottom: 2 }}>
+                {hoveredConstraint.type}
+              </div>
+              <div style={{ color: '#cbd5e1', fontFamily: 'monospace', fontSize: '9px' }}>
+                {hoveredConstraint.label}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ color: hoveredColor, fontFamily: 'monospace', fontSize: '10px', fontWeight: 'bold', marginBottom: 2 }}>
+                {(hoveredConstraint as ActiveEvent).type}
+              </div>
+              <div style={{ color: '#cbd5e1', fontFamily: 'monospace', fontSize: '9px' }}>
+                {getConstraintSummary(hoveredConstraint as ActiveEvent)}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
