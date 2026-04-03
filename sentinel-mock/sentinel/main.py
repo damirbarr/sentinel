@@ -6,6 +6,7 @@ import select
 import threading
 from sentinel.config import parse_config
 from sentinel.transport.ws_client import WSClient
+from sentinel.transport.event_publisher import EventPublisher
 from sentinel.simulation.vehicle_state import VehicleState
 from sentinel.simulation.route_simulator import RouteSimulator
 from sentinel.policy.decision_engine import DecisionEngine
@@ -143,12 +144,14 @@ async def run(config) -> None:
         await reporter.handle_backend_message(msg)
 
     client = WSClient(url=config.backend_url, on_message=on_message)
+    publisher = EventPublisher(api_base_url=config.api_base_url, vehicle_id=config.vehicle_id)
     reporter = Reporter(
         vehicle_id=config.vehicle_id,
         state=state,
         engine=engine,
         client=client,
         status_interval=config.status_interval,
+        publisher=publisher,
     )
 
     connect_task = asyncio.create_task(client.start())

@@ -1,4 +1,4 @@
-.PHONY: install dev frontend backend mock mock-2 mock-simulator test test-backend test-mock clean venv-setup venv-check
+.PHONY: install dev frontend backend mock mock-2 mock-simulator mock-n demo test test-backend test-mock clean venv-setup venv-check
 
 # ── Config ────────────────────────────────────────────────────────────────────
 VEHICLE_ID      ?= vehicle-001
@@ -7,6 +7,7 @@ START_LAT       ?= 37.7749
 START_LNG       ?= -122.4194
 MAX_DISTANCE_KM ?= 1
 CHAOS           ?= 0
+N               ?= 3
 
 MOCK_DIR     := sentinel-mock
 VENV         := $(MOCK_DIR)/.venv
@@ -60,6 +61,23 @@ mock-2: venv-check
 	$(MAKE) -j2 \
 		"mock VEHICLE_ID=vehicle-001 START_LAT=37.7749 START_LNG=-122.4194" \
 		"mock VEHICLE_ID=vehicle-002 START_LAT=37.7849 START_LNG=-122.4094"
+
+mock-n: venv-check
+	@echo "→ Spawning $(N) mock vehicles (chaos=$(CHAOS))..."
+	@$(PYTHON) scripts/spawn_mocks.py \
+		--n $(N) \
+		--python $(abspath $(PYTHON)) \
+		--backend-url $(BACKEND_URL) \
+		--max-distance $(MAX_DISTANCE_KM) \
+		$(if $(filter 1,$(CHAOS)),--chaos,)
+
+demo:
+	@echo "→ Starting Sentinel demo (backend + frontend + $(N) vehicles, chaos=1)"
+	@trap 'kill 0' INT TERM; \
+	$(MAKE) backend & \
+	sleep 2 && $(MAKE) frontend & \
+	sleep 4 && $(MAKE) mock-n N=$(N) CHAOS=1; \
+	wait
 
 mock-simulator:
 	@echo "Mock Simulator UI: http://localhost:3001/mock-simulator"

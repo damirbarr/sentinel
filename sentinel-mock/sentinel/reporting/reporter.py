@@ -6,6 +6,7 @@ from sentinel.simulation.vehicle_state import VehicleState
 from sentinel.policy.decision_engine import DecisionEngine
 from sentinel.models.events import ActiveConstraint, parse_constraint
 from sentinel.transport.ws_client import WSClient
+from sentinel.transport.event_publisher import EventPublisher
 from sentinel.policy.reason_codes import ReasonCode
 
 logger = logging.getLogger(__name__)
@@ -13,12 +14,13 @@ logger = logging.getLogger(__name__)
 
 class Reporter:
     def __init__(self, vehicle_id: str, state: VehicleState, engine: DecisionEngine,
-                 client: WSClient, status_interval: float):
+                 client: WSClient, status_interval: float, publisher: EventPublisher):
         self.vehicle_id = vehicle_id
         self.state = state
         self.engine = engine
         self.client = client
         self.status_interval = status_interval
+        self._publisher = publisher
         self._constraints: list[ActiveConstraint] = []
         self._last_decision = 'NORMAL'
         self._simulated: dict = {}  # simulated conditions from operator commands
@@ -51,16 +53,20 @@ class Reporter:
     async def _handle_command(self, command: str, payload: dict) -> None:
         if command == 'SIMULATE_NETWORK_DEGRADED':
             self._simulated['network'] = 'DEGRADED'
+            await self._publisher.publish_network('POOR')
         elif command == 'SIMULATE_NETWORK_LOST':
             self._simulated['network'] = 'LOST'
+            await self._publisher.publish_network('LOST')
         elif command == 'SIMULATE_PERCEPTION_ALARM':
             self._simulated['perception'] = payload.get('message', 'Perception fault detected')
         elif command == 'SIMULATE_OBSTACLE_DETECTED':
             self._simulated['obstacle'] = True
+            await self._publisher.publish_obstacle(self.state.position.lat, self.state.position.lng)
         elif command == 'SIMULATE_SENSOR_FAULT':
             self._simulated['sensor_fault'] = payload.get('description', 'Sensor malfunction')
         elif command == 'CLEAR_SIMULATION':
             self._simulated = {}
+            await self._publisher.clear_all()
         else:
             logger.warning(f'{self.vehicle_id}: unknown command {command!r}')
             return
