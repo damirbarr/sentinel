@@ -36,6 +36,11 @@ def _polygon_centroid(polygon: list[LatLng]) -> tuple[float, float]:
     return lat, lng
 
 
+def _polygon_radius_m(polygon: list[LatLng], clat: float, clng: float) -> float:
+    """Max distance (metres) from centroid to any vertex — approximate polygon radius."""
+    return max(_haversine_m(clat, clng, v.lat, v.lng) for v in polygon)
+
+
 def _eval_weather(p: WeatherPayload, lat: float, lng: float) -> tuple[DecisionState, list[str]]:
     # If weather has a geographic zone, check if vehicle is inside
     if hasattr(p, 'center') and p.center is not None and hasattr(p, 'radiusMeters') and p.radiusMeters:
@@ -85,13 +90,19 @@ class DecisionEngine:
         for c in constraints:
             if not c.active:
                 continue
-            if self.max_distance_km > 0 and c.type == 'GEOFENCE':
+            if c.type == 'GEOFENCE':
                 p = c.payload  # GeofencePayload
                 if hasattr(p, 'polygon') and p.polygon:
                     clat, clng = _polygon_centroid(p.polygon)
-                    dist_km = _haversine_m(lat, lng, clat, clng) / 1000.0
-                    if dist_km > self.max_distance_km:
-                        continue  # too far, ignore
+                    centroid_dist_m = _haversine_m(lat, lng, clat, clng)
+                    poly_radius_m = _polygon_radius_m(p.polygon, clat, clng)
+                    edge_dist_m = max(0.0, centroid_dist_m - poly_radius_m)
+                    # Smart proximity: ignore if vehicle is farther than diameter*2 from the edge
+                    if edge_dist_m > poly_radius_m * 4:  # diameter*2 == radius*4
+                        continue
+                    # Also honour global max_constraint_distance ceiling if set
+                    if self.max_distance_km > 0 and edge_dist_m / 1000.0 > self.max_distance_km:
+                        continue
             if self.max_distance_km > 0 and c.type == 'WEATHER':
                 p = c.payload
                 if hasattr(p, 'center') and p.center is not None and hasattr(p, 'radiusMeters') and p.radiusMeters:

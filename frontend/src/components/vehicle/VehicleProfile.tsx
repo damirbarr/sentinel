@@ -149,6 +149,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
             reasonCodes={vehicle.reasonCodes}
             speedKmh={vehicle.speedKmh}
             activeConstraints={activeConstraints}
+            affectingConstraintIds={vehicle.affectingConstraintIds ?? []}
             autoRotate={settingAutoRotateBrain}
             fullscreen
           />
@@ -253,6 +254,7 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
           reasonCodes={vehicle.reasonCodes}
           speedKmh={vehicle.speedKmh}
           activeConstraints={activeConstraints}
+          affectingConstraintIds={vehicle.affectingConstraintIds ?? []}
           autoRotate={settingAutoRotateBrain}
         />
         <div className={`mt-2 w-full rounded-md border p-3 ${DECISION_COLOR[vehicle.decision]}`}>
