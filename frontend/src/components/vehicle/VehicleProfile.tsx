@@ -321,15 +321,23 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
       {/* Nearby / Potential */}
       {nearbyConstraints.length > 0 && (
         <div style={{ userSelect: 'none' }}>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">◎ Nearby (not affecting)</p>
-          <div className="space-y-1">
-            {nearbyConstraints.map((event) => (
-              <div key={event.id} className="flex items-center gap-2 p-2 rounded bg-surface-2 border border-surface-border opacity-60">
-                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold opacity-60 ${typeClass(event.type)}`}>{event.type}</span>
-                <span className="text-[10px] font-mono text-slate-400 truncate">{constraintLabel(event)}</span>
-              </div>
-            ))}
-          </div>
+          <button
+            onClick={() => setNearbyExpanded(v => !v)}
+            className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-slate-400 transition-colors mb-2 w-full text-left"
+          >
+            <span style={{ display: 'inline-block', transition: 'transform 0.15s', transform: nearbyExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+            Nearby ({nearbyConstraints.length})
+          </button>
+          {nearbyExpanded && (
+            <div className="space-y-1">
+              {nearbyConstraints.map((event) => (
+                <div key={event.id} className="flex items-center gap-2 p-2 rounded bg-surface-2 border border-surface-border opacity-60">
+                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold opacity-60 ${typeClass(event.type)}`}>{event.type}</span>
+                  <span className="text-[10px] font-mono text-slate-400 truncate">{constraintLabel(event)}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
