@@ -1,235 +1,244 @@
 import { useRef, useEffect } from 'react'
+import { useMap } from 'react-leaflet'
 
-// ─── Particle types ───────────────────────────────────────────────────────────
-
-interface RainParticle  { x: number; y: number; speed: number; length: number }
-interface SnowParticle  { x: number; y: number; speed: number; radius: number; phase: number }
-interface FogParticle   { x: number; y: number; rx: number; ry: number; alpha: number; driftDir: number; driftSpeed: number }
-interface IceParticle   { x: number; y: number; speed: number; phase: number }
-interface WindParticle  { x: number; y: number; speed: number; length: number }
-
-interface ParticleStore {
-  rain:  RainParticle[]
-  snow:  SnowParticle[]
-  fog:   FogParticle[]
-  ice:   IceParticle[]
-  wind:  WindParticle[]
+export interface WeatherZone {
+  condition: string
+  center?: { lat: number; lng: number }
+  radiusMeters?: number
 }
 
-// ─── Initialisation helpers ───────────────────────────────────────────────────
+// ─── Particle types (positions normalized to unit circle: sqrt(nx²+ny²) ≤ 1) ──
 
-function initRain(w: number, h: number): RainParticle[] {
-  return Array.from({ length: 320 }, () => ({
-    x: Math.random() * w,
-    y: Math.random() * h,
-    speed: 6 + Math.random() * 4,
-    length: 15 + Math.random() * 8,
-  }))
+interface RainP   { nx: number; ny: number; speed: number; len: number }
+interface SnowP   { nx: number; ny: number; speed: number; radius: number; phase: number }
+interface FogBlob { nx: number; ny: number; blobR: number; alpha: number; driftNx: number; driftNy: number; driftSpeed: number }
+interface IceP    { nx: number; ny: number; phase: number; r: number }
+interface WindP   { nx: number; ny: number; speed: number; len: number; phase: number }
+
+interface ZonePs { rain: RainP[]; snow: SnowP[]; fog: FogBlob[]; ice: IceP[]; wind: WindP[] }
+
+// ─── Init helpers ─────────────────────────────────────────────────────────────
+
+function inCircle(spread = 1) {
+  const a = Math.random() * Math.PI * 2
+  const r = Math.sqrt(Math.random()) * spread
+  return { nx: r * Math.cos(a), ny: r * Math.sin(a) }
 }
 
-function initSnow(w: number, h: number): SnowParticle[] {
-  return Array.from({ length: 220 }, () => ({
-    x: Math.random() * w,
-    y: Math.random() * h,
-    speed: 0.8 + Math.random() * 1.2,
-    radius: 1.5 + Math.random() * 2.5,
-    phase: Math.random() * Math.PI * 2,
-  }))
+function initZonePs(condition: string): ZonePs {
+  const ps: ZonePs = { rain: [], snow: [], fog: [], ice: [], wind: [] }
+  switch (condition) {
+    case 'HEAVY_RAIN':
+      for (let i = 0; i < 200; i++) {
+        const { nx } = inCircle()
+        ps.rain.push({ nx, ny: Math.random() * 2 - 1, speed: 0.024 + Math.random() * 0.018, len: 0.06 + Math.random() * 0.04 })
+      }
+      break
+    case 'SNOW':
+      for (let i = 0; i < 160; i++) {
+        const p = inCircle()
+        ps.snow.push({ ...p, speed: 0.004 + Math.random() * 0.005, radius: 1.5 + Math.random() * 2.5, phase: Math.random() * Math.PI * 2 })
+      }
+      break
+    case 'FOG': case 'LOW_VISIBILITY':
+      for (let i = 0; i < 24; i++) {
+        const p = inCircle(0.85)
+        ps.fog.push({
+          nx: p.nx, ny: p.ny,
+          blobR: 0.30 + Math.random() * 0.42,
+          alpha: 0.07 + Math.random() * 0.09,
+          driftNx: Math.random() - 0.5,
+          driftNy: (Math.random() - 0.5) * 0.5,
+          driftSpeed: 0.00022 + Math.random() * 0.00025,
+        })
+      }
+      break
+    case 'ICE':
+      for (let i = 0; i < 120; i++) {
+        const p = inCircle()
+        ps.ice.push({ ...p, phase: Math.random() * Math.PI * 2, r: 1.5 + Math.random() * 2.5 })
+      }
+      break
+    case 'STRONG_WIND':
+      for (let i = 0; i < 80; i++) {
+        const p = inCircle()
+        ps.wind.push({ ...p, speed: 0.013 + Math.random() * 0.015, len: 0.05 + Math.random() * 0.07, phase: Math.random() * Math.PI * 2 })
+      }
+      break
+  }
+  return ps
 }
 
-function initFog(w: number, h: number): FogParticle[] {
-  return Array.from({ length: 14 }, () => ({
-    x: Math.random() * w,
-    y: Math.random() * h,
-    rx: 80 + Math.random() * 120,
-    ry: 40 + Math.random() * 60,
-    alpha: 0.02 + Math.random() * 0.04,
-    driftDir: Math.random() < 0.5 ? -1 : 1,
-    driftSpeed: 0.1 + Math.random() * 0.2,
-  }))
+// ─── Draw functions ───────────────────────────────────────────────────────────
+
+function drawRain(ctx: CanvasRenderingContext2D, cx: number, cy: number, rPx: number, ps: RainP[]) {
+  ctx.strokeStyle = 'rgba(160, 190, 255, 0.50)'
+  ctx.lineWidth = 1.0
+  for (const r of ps) {
+    const x = cx + r.nx * rPx
+    const y = cy + r.ny * rPx
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(x + r.len * 0.36 * rPx, y + r.len * rPx)
+    ctx.stroke()
+    r.ny += r.speed
+    r.nx += r.speed * 0.36
+    if (r.ny > 1.15) {
+      r.ny = -1.1 - Math.random() * 0.15
+      r.nx = (Math.random() * 2 - 1) * 0.9
+    }
+  }
 }
 
-function initIce(w: number, h: number): IceParticle[] {
-  return Array.from({ length: 80 }, () => ({
-    x: Math.random() * w,
-    y: Math.random() * h,
-    speed: 0.2 + Math.random() * 0.4,
-    phase: Math.random() * Math.PI * 2,
-  }))
+function drawSnow(ctx: CanvasRenderingContext2D, cx: number, cy: number, rPx: number, ps: SnowP[], t: number) {
+  ctx.fillStyle = 'rgba(230, 242, 255, 0.82)'
+  for (const s of ps) {
+    ctx.beginPath()
+    ctx.arc(cx + s.nx * rPx, cy + s.ny * rPx, s.radius, 0, 2 * Math.PI)
+    ctx.fill()
+    s.nx += Math.sin(t * 0.012 + s.phase) * 0.0025
+    s.ny += s.speed
+    if (s.ny > 1.15) {
+      s.ny = -1.05 - Math.random() * 0.1
+      s.nx = (Math.random() * 2 - 1) * 0.9
+    }
+    // prevent indefinite horizontal drift
+    if (Math.abs(s.nx) > 1.0) s.nx *= -0.9
+  }
 }
 
-function initWind(w: number, h: number): WindParticle[] {
-  return Array.from({ length: 120 }, () => ({
-    x: Math.random() * w,
-    y: Math.random() * h,
-    speed: 8 + Math.random() * 10,
-    length: 20 + Math.random() * 30,
-  }))
+function drawFog(ctx: CanvasRenderingContext2D, cx: number, cy: number, rPx: number, ps: FogBlob[]) {
+  // Milky base fill
+  ctx.fillStyle = 'rgba(200, 212, 228, 0.18)'
+  ctx.beginPath()
+  ctx.arc(cx, cy, rPx, 0, 2 * Math.PI)
+  ctx.fill()
+  // Fluffy cloud blobs
+  for (const f of ps) {
+    const fx = cx + f.nx * rPx
+    const fy = cy + f.ny * rPx
+    const bR = f.blobR * rPx
+    const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, bR)
+    g.addColorStop(0,   `rgba(222, 230, 242, ${f.alpha})`)
+    g.addColorStop(0.5, `rgba(212, 222, 236, ${f.alpha * 0.55})`)
+    g.addColorStop(1,   'rgba(205, 216, 232, 0)')
+    ctx.beginPath()
+    ctx.arc(fx, fy, bR, 0, 2 * Math.PI)
+    ctx.fillStyle = g
+    ctx.fill()
+    f.nx += f.driftNx * f.driftSpeed
+    f.ny += f.driftNy * f.driftSpeed
+    if (Math.sqrt(f.nx * f.nx + f.ny * f.ny) > 0.83) {
+      f.driftNx *= -0.9
+      f.driftNy *= -0.9
+      f.nx *= 0.96
+      f.ny *= 0.96
+    }
+  }
+}
+
+function drawIce(ctx: CanvasRenderingContext2D, cx: number, cy: number, rPx: number, ps: IceP[], t: number) {
+  // Blue frost tint overlay
+  ctx.fillStyle = 'rgba(140, 198, 255, 0.10)'
+  ctx.beginPath()
+  ctx.arc(cx, cy, rPx, 0, 2 * Math.PI)
+  ctx.fill()
+  // Static shimmer crystals — no movement, just shimmer
+  for (const ic of ps) {
+    const shimmer = 0.12 + 0.40 * Math.abs(Math.sin(t * 0.07 + ic.phase))
+    ctx.fillStyle = `rgba(185, 222, 255, ${shimmer})`
+    ctx.beginPath()
+    ctx.arc(cx + ic.nx * rPx, cy + ic.ny * rPx, ic.r, 0, 2 * Math.PI)
+    ctx.fill()
+  }
+}
+
+function drawWind(ctx: CanvasRenderingContext2D, cx: number, cy: number, rPx: number, ps: WindP[], t: number) {
+  ctx.lineWidth = 0.7
+  for (const w of ps) {
+    ctx.strokeStyle = `rgba(175, 192, 212, ${0.18 + 0.18 * Math.abs(Math.sin(t * 0.07 + w.phase))})`
+    const x = cx + w.nx * rPx
+    const y = cy + w.ny * rPx
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(cx + (w.nx + w.len) * rPx, y)
+    ctx.stroke()
+    w.nx += w.speed
+    if (w.nx > 1.1) {
+      w.nx = -1.1 - Math.random() * 0.2
+      w.ny = (Math.random() * 2 - 1) * 0.88
+    }
+  }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-interface Props {
-  weatherConditions: string[]
-}
+export default function WeatherOverlay({ weatherZones }: { weatherZones: WeatherZone[] }) {
+  const map = useMap()
+  const psMapRef  = useRef(new Map<string, ZonePs>())
+  const zonesRef  = useRef(weatherZones)
+  const rafRef    = useRef(0)
+  const frameRef  = useRef(0)
 
-export default function WeatherOverlay({ weatherConditions }: Props) {
-  const canvasRef  = useRef<HTMLCanvasElement>(null)
-  const rafRef     = useRef<number>(0)
-  const particles  = useRef<ParticleStore>({ rain: [], snow: [], fog: [], ice: [], wind: [] })
-  const frameRef   = useRef(0)
-
-  // Resize canvas to fill parent and re-init particles
+  // Keep zones ref current; sync particle stores when condition set changes
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const parent = canvas.parentElement
-    if (!parent) return
+    zonesRef.current = weatherZones
+    const active = new Set(weatherZones.map(z => z.condition))
+    for (const k of psMapRef.current.keys()) {
+      if (!active.has(k)) psMapRef.current.delete(k)
+    }
+    for (const zone of weatherZones) {
+      if (!psMapRef.current.has(zone.condition)) {
+        psMapRef.current.set(zone.condition, initZonePs(zone.condition))
+      }
+    }
+  }, [weatherZones])
+
+  // Canvas lifecycle — only runs once per map instance
+  useEffect(() => {
+    const container = map.getContainer()
+    const canvas = document.createElement('canvas')
+    canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:500'
+    container.appendChild(canvas)
 
     function resize() {
-      if (!canvas || !parent) return
-      canvas.width  = parent.offsetWidth
-      canvas.height = parent.offsetHeight
-      initAll(canvas.width, canvas.height)
+      canvas.width  = container.offsetWidth
+      canvas.height = container.offsetHeight
     }
-
-    function initAll(w: number, h: number) {
-      const p = particles.current
-      p.rain = weatherConditions.includes('HEAVY_RAIN') ? initRain(w, h) : []
-      p.snow = weatherConditions.includes('SNOW')       ? initSnow(w, h) : []
-      p.fog  = weatherConditions.includes('FOG')        ? initFog(w, h)  : []
-      p.ice  = weatherConditions.includes('ICE')        ? initIce(w, h)  : []
-      p.wind = weatherConditions.includes('STRONG_WIND')? initWind(w, h) : []
-    }
-
     resize()
     const ro = new ResizeObserver(resize)
-    ro.observe(parent)
-    return () => ro.disconnect()
-  }, [weatherConditions])
-
-  // Animation loop
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    if (weatherConditions.length === 0) {
-      cancelAnimationFrame(rafRef.current)
-      const ctx = canvas.getContext('2d')
-      ctx?.clearRect(0, 0, canvas.width, canvas.height)
-      return
-    }
+    ro.observe(container)
 
     function draw() {
-      if (!canvas) return
       const ctx = canvas.getContext('2d')
       if (!ctx) return
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      const t = ++frameRef.current
 
-      const w = canvas.width
-      const h = canvas.height
-      const t = (frameRef.current += 1)
+      for (const zone of zonesRef.current) {
+        if (!zone.center || !zone.radiusMeters) continue
+        const ps = psMapRef.current.get(zone.condition)
+        if (!ps) continue
 
-      ctx.clearRect(0, 0, w, h)
+        const cp = map.latLngToContainerPoint([zone.center.lat, zone.center.lng] as [number, number])
+        const cx = cp.x, cy = cp.y
+        const metersPerPx = 156543.03392 * Math.cos(zone.center.lat * Math.PI / 180) / Math.pow(2, map.getZoom())
+        const rPx = zone.radiusMeters / metersPerPx
+        if (rPx < 8) continue
 
-      const p = particles.current
-
-      // ── HEAVY_RAIN ──────────────────────────────────────────────────────────
-      if (p.rain.length) {
         ctx.save()
-        ctx.strokeStyle = 'rgba(180, 210, 255, 0.55)'
-        ctx.lineWidth = 1.2
-        for (const r of p.rain) {
-          // angle ~70° from vertical → sin(70°)≈0.94, cos(70°)≈0.34
-          const dx = r.length * 0.36
-          const dy = r.length * 0.93
-          ctx.beginPath()
-          ctx.moveTo(r.x, r.y)
-          ctx.lineTo(r.x + dx, r.y + dy)
-          ctx.stroke()
-          r.x += dx / (dy / r.speed)
-          r.y += r.speed
-          if (r.y > h + r.length) {
-            r.y = -r.length
-            r.x = Math.random() * w
-          }
-        }
-        ctx.restore()
-      }
+        ctx.beginPath()
+        ctx.arc(cx, cy, rPx, 0, 2 * Math.PI)
+        ctx.clip()
 
-      // ── SNOW ─────────────────────────────────────────────────────────────────
-      if (p.snow.length) {
-        ctx.save()
-        ctx.fillStyle = 'rgba(230, 240, 255, 0.80)'
-        for (const s of p.snow) {
-          const sway = Math.sin(t * 0.02 + s.phase) * 0.8
-          ctx.beginPath()
-          ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2)
-          ctx.fill()
-          s.x += sway
-          s.y += s.speed
-          if (s.y > h + s.radius) {
-            s.y = -s.radius
-            s.x = Math.random() * w
-          }
+        switch (zone.condition) {
+          case 'HEAVY_RAIN':                   drawRain(ctx, cx, cy, rPx, ps.rain); break
+          case 'SNOW':                         drawSnow(ctx, cx, cy, rPx, ps.snow, t); break
+          case 'FOG': case 'LOW_VISIBILITY':   drawFog(ctx, cx, cy, rPx, ps.fog); break
+          case 'ICE':                          drawIce(ctx, cx, cy, rPx, ps.ice, t); break
+          case 'STRONG_WIND':                  drawWind(ctx, cx, cy, rPx, ps.wind, t); break
         }
-        ctx.restore()
-      }
 
-      // ── FOG ──────────────────────────────────────────────────────────────────
-      if (p.fog.length) {
-        ctx.save()
-        for (const f of p.fog) {
-          const grad = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, Math.max(f.rx, f.ry))
-          grad.addColorStop(0, `rgba(210, 215, 230, ${f.alpha})`)
-          grad.addColorStop(1, 'rgba(210, 215, 230, 0)')
-          ctx.save()
-          ctx.scale(1, f.ry / f.rx)
-          ctx.beginPath()
-          ctx.arc(f.x, f.y * (f.rx / f.ry), f.rx, 0, Math.PI * 2)
-          ctx.fillStyle = grad
-          ctx.fill()
-          ctx.restore()
-          f.x += f.driftDir * f.driftSpeed
-          if (f.x > w + f.rx) f.x = -f.rx
-          if (f.x < -f.rx)    f.x =  w + f.rx
-        }
-        ctx.restore()
-      }
-
-      // ── ICE ──────────────────────────────────────────────────────────────────
-      if (p.ice.length) {
-        ctx.save()
-        for (const ic of p.ice) {
-          const shimmer = 0.3 + 0.7 * Math.abs(Math.sin(t * 0.15 + ic.phase))
-          ctx.fillStyle = `rgba(180, 220, 255, ${shimmer * 0.7})`
-          ctx.beginPath()
-          ctx.arc(ic.x, ic.y, 1.5, 0, Math.PI * 2)
-          ctx.fill()
-          ic.y += ic.speed
-          if (ic.y > h + 2) {
-            ic.y = -2
-            ic.x = Math.random() * w
-          }
-        }
-        ctx.restore()
-      }
-
-      // ── STRONG_WIND ──────────────────────────────────────────────────────────
-      if (p.wind.length) {
-        ctx.save()
-        ctx.strokeStyle = 'rgba(200, 210, 220, 0.45)'
-        ctx.lineWidth = 0.8
-        for (const wnd of p.wind) {
-          ctx.beginPath()
-          ctx.moveTo(wnd.x, wnd.y)
-          ctx.lineTo(wnd.x + wnd.length, wnd.y)
-          ctx.stroke()
-          wnd.x += wnd.speed
-          if (wnd.x > w + wnd.length) {
-            wnd.x = -wnd.length
-            wnd.y = Math.random() * h
-          }
-        }
         ctx.restore()
       }
 
@@ -237,21 +246,13 @@ export default function WeatherOverlay({ weatherConditions }: Props) {
     }
 
     rafRef.current = requestAnimationFrame(draw)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [weatherConditions])
 
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        pointerEvents: 'none',
-        zIndex: 500,
-      }}
-    />
-  )
+    return () => {
+      cancelAnimationFrame(rafRef.current)
+      ro.disconnect()
+      canvas.parentNode?.removeChild(canvas)
+    }
+  }, [map])
+
+  return null
 }

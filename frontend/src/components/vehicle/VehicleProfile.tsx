@@ -123,16 +123,16 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
     .map((id) => events[id])
     .filter(Boolean)
 
-  const weatherConditions = activeConstraints
-    .filter((e) => e.type === 'WEATHER')
-    .map((e) => (e.payload as WeatherPayload).condition)
-
   const affectingConstraints = activeConstraints.filter(e =>
     (vehicle.affectingConstraintIds ?? []).includes(e.id)
   )
   const nearbyConstraints = activeConstraints.filter(e =>
     !(vehicle.affectingConstraintIds ?? []).includes(e.id)
   )
+
+  const weatherConditions = affectingConstraints
+    .filter((e) => e.type === 'WEATHER')
+    .map((e) => (e.payload as WeatherPayload).condition)
 
   if (fullscreen) {
     return (

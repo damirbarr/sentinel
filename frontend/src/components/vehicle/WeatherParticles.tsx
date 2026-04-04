@@ -135,10 +135,10 @@ function WindParticles() {
   const positions = useMemo(() => {
     const pos = new Float32Array(COUNT * 2 * 3) // 2 vertices per line
     for (let i = 0; i < COUNT; i++) {
-      const y = (Math.random() - 0.5) * 6
-      const z = (Math.random() - 0.5) * 6
+      const y = (Math.random() - 0.5) * 5
+      const z = (Math.random() - 0.5) * 3
       const x = (Math.random() - 0.5) * 6
-      const len = 0.3 + Math.random() * 0.5
+      const len = 0.06 + Math.random() * 0.09
       // start
       pos[i * 6]     = x
       pos[i * 6 + 1] = y
@@ -154,7 +154,7 @@ function WindParticles() {
   useFrame(() => {
     if (!linesRef.current) return
     const pos = linesRef.current.geometry.attributes.position.array as Float32Array
-    const speed = 0.06
+    const speed = 0.014
     for (let i = 0; i < COUNT; i++) {
       pos[i * 6]     += speed
       pos[i * 6 + 3] += speed

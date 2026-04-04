@@ -5,6 +5,7 @@ import VehicleMarker from './VehicleMarker'
 import GeofenceLayer from './GeofenceLayer'
 import GeofenceDrawer from './GeofenceDrawer'
 import WeatherOverlay from './WeatherOverlay'
+import type { WeatherZone } from './WeatherOverlay'
 import { useVehiclesStore } from '../../store/vehicles.store'
 import { useUIStore } from '../../store/ui.store'
 import { useEventsStore } from '../../store/events.store'
@@ -156,10 +157,13 @@ export default function MapCanvas() {
   const { isDrawingGeofence, isPlacingWeather } = useUIStore()
   const events = useEventsStore((s) => s.events)
 
-  const activeWeatherConditions = useMemo(() =>
+  const activeWeatherZones = useMemo<WeatherZone[]>(() =>
     Object.values(events)
       .filter((e) => e.active && e.type === 'WEATHER')
-      .map((e) => (e.payload as WeatherPayload).condition),
+      .map((e) => {
+        const p = e.payload as WeatherPayload
+        return { condition: p.condition, center: p.center, radiusMeters: p.radiusMeters }
+      }),
   [events])
 
   return (
@@ -177,8 +181,8 @@ export default function MapCanvas() {
         <WeatherPlacementClickHandler />
         <FlyToHandler />
         <VehicleFollowHandler />
+        <WeatherOverlay weatherZones={activeWeatherZones} />
       </MapContainer>
-      <WeatherOverlay weatherConditions={activeWeatherConditions} />
       {isDrawingGeofence && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] px-3 py-1.5 rounded-full bg-black/70 border border-sky-400/50 text-xs text-sky-300 font-medium pointer-events-none">
           Click to add points · Double-click to finish

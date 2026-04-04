@@ -352,7 +352,7 @@ export default function AtomCanvas({ decision, reasonCodes, speedKmh, activeCons
     <div style={{ position: 'relative', height: fullscreen ? '100vh' : '260px', userSelect: 'none' }}>
       <Canvas
         style={{ height: '100%', background: 'transparent', userSelect: 'none' }}
-        camera={{ position: [0, 1.5, 5], fov: 50 }}
+        camera={{ position: fullscreen ? [0, 0.4, 5] : [0, 1.5, 5], fov: 50 }}
         gl={{ alpha: true, antialias: true }}
       >
         <OrbitControls
