@@ -131,6 +131,12 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
     !(vehicle.affectingConstraintIds ?? []).includes(e.id)
   )
 
+  // Cap viz at 8: affecting first (they matter most), fill remainder with nearby
+  const vizConstraints = [...affectingConstraints, ...nearbyConstraints].slice(0, 8)
+  const vizAffectingIds = vizConstraints
+    .filter(e => (vehicle.affectingConstraintIds ?? []).includes(e.id))
+    .map(e => e.id)
+
   const weatherConditions = affectingConstraints
     .filter((e) => e.type === 'WEATHER')
     .map((e) => (e.payload as WeatherPayload).condition)
@@ -154,8 +160,8 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
             decision={vehicle.decision}
             reasonCodes={vehicle.reasonCodes}
             speedKmh={vehicle.speedKmh}
-            activeConstraints={activeConstraints}
-            affectingConstraintIds={vehicle.affectingConstraintIds ?? []}
+            activeConstraints={vizConstraints}
+            affectingConstraintIds={vizAffectingIds}
             autoRotate={settingAutoRotateBrain}
             weatherConditions={weatherConditions}
             fullscreen

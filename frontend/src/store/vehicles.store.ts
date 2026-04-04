@@ -1,5 +1,8 @@
 import { create } from 'zustand'
+import { shallow } from 'zustand/shallow'
 import type { VehicleStatus } from '../types'
+
+export { shallow }
 
 interface TrailPoint {
   lat: number
@@ -32,7 +35,12 @@ export const useVehiclesStore = create<VehiclesState>((set) => ({
     set((s) => {
       const now = Date.now()
       const prev = s.trails[vehicleId] ?? []
-      const next = [...prev, { lat, lng, decision, ts: now }].filter((p) => now - p.ts <= 60000)
-      return { trails: { ...s.trails, [vehicleId]: next } }
+      const last = prev[prev.length - 1]
+      // Throttle: skip if last point was less than 2s ago
+      if (last && now - last.ts < 2000) return s
+      const trimmed = prev.filter((p) => now - p.ts <= 60000)
+      // Cap at 30 points (2s interval × 30 = 60s coverage)
+      const capped = trimmed.length >= 30 ? trimmed.slice(-29) : trimmed
+      return { trails: { ...s.trails, [vehicleId]: [...capped, { lat, lng, decision, ts: now }] } }
     }),
 }))

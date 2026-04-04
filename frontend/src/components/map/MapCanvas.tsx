@@ -1,12 +1,12 @@
 import { MapContainer, TileLayer, useMapEvents, useMap, Circle, Polyline } from 'react-leaflet'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, memo } from 'react'
 import 'leaflet/dist/leaflet.css'
 import VehicleMarker from './VehicleMarker'
 import GeofenceLayer from './GeofenceLayer'
 import GeofenceDrawer from './GeofenceDrawer'
 import WeatherOverlay from './WeatherOverlay'
 import type { WeatherZone } from './WeatherOverlay'
-import { useVehiclesStore } from '../../store/vehicles.store'
+import { useVehiclesStore, shallow } from '../../store/vehicles.store'
 import { useUIStore } from '../../store/ui.store'
 import { useEventsStore } from '../../store/events.store'
 import type { WeatherPayload } from '../../types'
@@ -153,7 +153,8 @@ function VehicleFollowHandler() {
 }
 
 export default function MapCanvas() {
-  const vehicles = useVehiclesStore((s) => s.vehicles)
+  // Subscribe only to the list of IDs — re-renders only when vehicles join/leave, not on every position update
+  const vehicleIds = useVehiclesStore((s) => Object.keys(s.vehicles), shallow)
   const { isDrawingGeofence, isPlacingWeather } = useUIStore()
   const events = useEventsStore((s) => s.events)
 
@@ -176,7 +177,7 @@ export default function MapCanvas() {
         />
         <GeofenceLayer />
         <TrailLayer />
-        {Object.values(vehicles).map((v) => <VehicleMarker key={v.vehicleId} vehicle={v} />)}
+        {vehicleIds.map((id) => <VehicleMarker key={id} vehicleId={id} />)}
         {isDrawingGeofence && <GeofenceDrawer />}
         <WeatherPlacementClickHandler />
         <FlyToHandler />

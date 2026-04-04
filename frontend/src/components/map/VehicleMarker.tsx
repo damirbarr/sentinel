@@ -2,7 +2,7 @@ import { useRef, useMemo } from 'react'
 import { Marker, Tooltip } from 'react-leaflet'
 import L from 'leaflet'
 import { useUIStore } from '../../store/ui.store'
-import type { VehicleStatus } from '../../types'
+import { useVehiclesStore } from '../../store/vehicles.store'
 
 const DECISION_COLORS: Record<string, string> = {
   NORMAL: '#4ade80',
@@ -34,14 +34,18 @@ function vehicleIcon(decision: string, connected: boolean, heading: number, isSe
   return L.divIcon({ html: svg, className: '', iconSize: [TOTAL, TOTAL], iconAnchor: [C, C] })
 }
 
-export default function VehicleMarker({ vehicle }: { vehicle: VehicleStatus }) {
+export default function VehicleMarker({ vehicleId }: { vehicleId: string }) {
+  const vehicle = useVehiclesStore((s) => s.vehicles[vehicleId])
   const { setSelectedVehicle, selectedVehicleId, setFollowingVehicle } = useUIStore()
-  const isSelected = selectedVehicleId === vehicle.vehicleId
+  const isSelected = selectedVehicleId === vehicleId
   const markerRef = useRef<L.Marker>(null)
+
   const icon = useMemo(
-    () => vehicleIcon(vehicle.decision, vehicle.connected, vehicle.position.heading, isSelected),
-    [vehicle.decision, vehicle.connected, vehicle.position.heading, isSelected]
+    () => vehicle ? vehicleIcon(vehicle.decision, vehicle.connected, vehicle.position.heading, isSelected) : null,
+    [vehicle?.decision, vehicle?.connected, vehicle?.position.heading, isSelected]
   )
+
+  if (!vehicle || !icon) return null
 
   return (
     <Marker
@@ -53,7 +57,7 @@ export default function VehicleMarker({ vehicle }: { vehicle: VehicleStatus }) {
           setSelectedVehicle(null)
           setFollowingVehicle(null)
         } else {
-          setSelectedVehicle(vehicle.vehicleId)
+          setSelectedVehicle(vehicleId)
         }
       } }}
     >
@@ -61,7 +65,7 @@ export default function VehicleMarker({ vehicle }: { vehicle: VehicleStatus }) {
         className="!bg-[#0e0b1e] !border-[rgba(255,255,255,0.12)] !rounded !shadow-none before:!border-t-[#0e0b1e]"
       >
         <div style={{ fontFamily: 'monospace', fontSize: '11px', lineHeight: 1.4 }}>
-          <div style={{ fontWeight: 700, color: '#e2e8f0' }}>{vehicle.vehicleId}</div>
+          <div style={{ fontWeight: 700, color: '#e2e8f0' }}>{vehicleId}</div>
           <div style={{ color: '#94a3b8' }}>{vehicle.speedKmh.toFixed(0)} km/h</div>
         </div>
       </Tooltip>
