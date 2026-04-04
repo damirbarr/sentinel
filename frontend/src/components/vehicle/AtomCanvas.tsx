@@ -143,7 +143,8 @@ function ElectronOrbit({ nodeId, color, targetStability, affecting, isPaused, on
 
   const colorObj = useMemo(() => new THREE.Color(color), [color])
 
-  const trailLength = affecting ? 52   : 0
+  const trailWidth  = affecting ? 0.38 : 0.06
+  const trailLength = affecting ? 52   : 22
   const elecOpacity = affecting ? 1.0  : 0.15
   const elecEmit    = affecting ? 1.4  : 0.2
   const elecR       = affecting ? 0.08 : 0.04
@@ -212,16 +213,14 @@ function ElectronOrbit({ nodeId, color, targetStability, affecting, isPaused, on
         </mesh>
       </group>
       {/* Trail lives OUTSIDE the rotating group so it renders in world space correctly */}
-      {affecting && (
-        <Trail
-          target={electronRef as unknown as React.RefObject<THREE.Object3D>}
-          width={0.38}
-          length={trailLength}
-          color={color}
-          attenuation={(t) => t}
-          decay={0}
-        />
-      )}
+      <Trail
+        target={electronRef as unknown as React.RefObject<THREE.Object3D>}
+        width={trailWidth}
+        length={trailLength}
+        color={color}
+        attenuation={(t) => t}
+        decay={0}
+      />
     </>
   )
 }
@@ -350,10 +349,10 @@ export default function AtomCanvas({ decision, reasonCodes, speedKmh, activeCons
   }, [activeConstraints, reasonCodes, hovered])
 
   return (
-    <div style={{ position: 'relative', height: fullscreen ? '100vh' : '260px', userSelect: 'none' }}>
+    <div style={{ position: 'relative', height: fullscreen ? '100%' : '260px', userSelect: 'none' }}>
       <Canvas
         style={{ height: '100%', background: 'transparent', userSelect: 'none' }}
-        camera={{ position: fullscreen ? [0, 0.4, 5] : [0, 1.5, 5], fov: 50 }}
+        camera={{ position: fullscreen ? [0, 0, 4] : [0, 1.5, 5], fov: fullscreen ? 45 : 50 }}
         gl={{ alpha: true, antialias: true }}
       >
         <OrbitControls

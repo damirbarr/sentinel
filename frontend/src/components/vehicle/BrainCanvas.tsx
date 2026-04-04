@@ -323,10 +323,10 @@ export default function BrainCanvas({ decision, reasonCodes, speedKmh, activeCon
     : '#a78bfa'
 
   return (
-    <div style={{ position: 'relative', height: fullscreen ? '100vh' : '260px', userSelect: 'none' }}>
+    <div style={{ position: 'relative', height: fullscreen ? '100%' : '260px', userSelect: 'none' }}>
       <Canvas
         style={{ height: '100%', background: 'transparent', userSelect: 'none' }}
-        camera={{ position: fullscreen ? [0, 0.4, 4] : [0, 1.5, 4], fov: 50 }}
+        camera={{ position: fullscreen ? [0, 0, 3.5] : [0, 1.5, 4], fov: fullscreen ? 45 : 50 }}
         gl={{ alpha: true, antialias: true }}
       >
         <OrbitControls
