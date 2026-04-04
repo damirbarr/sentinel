@@ -143,7 +143,7 @@ function ElectronOrbit({ nodeId, color, targetStability, affecting, isPaused, on
 
   const colorObj = useMemo(() => new THREE.Color(color), [color])
 
-  const trailWidth  = affecting ? 0.04 : 0.01
+  const trailWidth  = affecting ? 0.12 : 0.025
   const trailLength = affecting ? 48   : 18
   const elecOpacity = affecting ? 1.0  : 0.15
   const elecEmit    = affecting ? 1.4  : 0.2
