@@ -143,8 +143,7 @@ function ElectronOrbit({ nodeId, color, targetStability, affecting, isPaused, on
 
   const colorObj = useMemo(() => new THREE.Color(color), [color])
 
-  const trailWidth  = affecting ? 0.12 : 0.025
-  const trailLength = affecting ? 48   : 18
+  const trailLength = affecting ? 52   : 0
   const elecOpacity = affecting ? 1.0  : 0.15
   const elecEmit    = affecting ? 1.4  : 0.2
   const elecR       = affecting ? 0.08 : 0.04
@@ -213,14 +212,16 @@ function ElectronOrbit({ nodeId, color, targetStability, affecting, isPaused, on
         </mesh>
       </group>
       {/* Trail lives OUTSIDE the rotating group so it renders in world space correctly */}
-      <Trail
-        target={electronRef as unknown as React.RefObject<THREE.Object3D>}
-        width={trailWidth}
-        length={trailLength}
-        color={color}
-        attenuation={(t) => t * t}
-        decay={1}
-      />
+      {affecting && (
+        <Trail
+          target={electronRef as unknown as React.RefObject<THREE.Object3D>}
+          width={0.38}
+          length={trailLength}
+          color={color}
+          attenuation={(t) => t}
+          decay={0}
+        />
+      )}
     </>
   )
 }
