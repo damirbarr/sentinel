@@ -282,8 +282,8 @@ export default function VehicleProfile({ vehicleId }: { vehicleId: string }) {
           decision={vehicle.decision}
           reasonCodes={vehicle.reasonCodes}
           speedKmh={vehicle.speedKmh}
-          activeConstraints={activeConstraints}
-          affectingConstraintIds={vehicle.affectingConstraintIds ?? []}
+          activeConstraints={vizConstraints}
+          affectingConstraintIds={vizAffectingIds}
           autoRotate={settingAutoRotateBrain}
           weatherConditions={weatherConditions}
         />

@@ -3,9 +3,8 @@ import { useUIStore } from '../../store/ui.store'
 import { useState, useEffect } from 'react'
 
 export default function Header() {
-  const vehicles = useVehiclesStore((s) => s.vehicles)
-  const all = Object.values(vehicles)
-  const connected = all.filter((v) => v.connected).length
+  const total     = useVehiclesStore((s) => Object.keys(s.vehicles).length)
+  const connected = useVehiclesStore((s) => Object.values(s.vehicles).filter((v) => v.connected).length)
   const toggleSettings = useUIStore((s) => s.toggleSettings)
 
   const [utc, setUtc] = useState(() => new Date().toUTCString().slice(17, 25))
@@ -40,7 +39,7 @@ export default function Header() {
         {/* Vehicle count with cyan glow border */}
         <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-accent-cyan/10 border border-accent-cyan/40 border-glow-cyan">
           <span className="text-xs text-slate-400">Vehicles</span>
-          <span className="text-xs font-mono font-bold text-accent-cyan">{connected}/{all.length}</span>
+          <span className="text-xs font-mono font-bold text-accent-cyan">{connected}/{total}</span>
         </div>
         {/* LIVE indicator — double ring pulse */}
         <div className="relative flex items-center gap-2 px-3 py-1 rounded-full bg-surface-2 border border-accent-green/30">

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../../api/http'
-import { useVehiclesStore } from '../../store/vehicles.store'
+import { useVehiclesStore, shallow } from '../../store/vehicles.store'
 
 const SEVERITIES = ['DEGRADED', 'UNSTABLE', 'LOST'] as const
 const DESCS: Record<string, string> = { DEGRADED: 'Reduced bandwidth — degraded speed mode.', UNSTABLE: 'Intermittent connection — degraded speed.', LOST: 'No connection — safe stop recommended.' }
@@ -8,7 +8,7 @@ const inp = "w-full px-3 py-2 rounded-lg bg-surface text-sm text-white border bo
 const lbl = "block text-xs font-medium text-slate-400 mb-1"
 
 export default function NetworkForm() {
-  const vehicles = useVehiclesStore((s) => s.vehicles)
+  const vehicleIds = useVehiclesStore((s) => Object.keys(s.vehicles), shallow)
   const [severity, setSeverity] = useState<typeof SEVERITIES[number]>('DEGRADED')
   const [target, setTarget] = useState('all')
   const [submitting, setSubmitting] = useState(false)
@@ -41,7 +41,7 @@ export default function NetworkForm() {
         <label className={lbl}>Target</label>
         <select value={target} onChange={(e) => setTarget(e.target.value)} className={`${inp} appearance-none`}>
           <option value="all">All Vehicles (global)</option>
-          {Object.keys(vehicles).map((id) => <option key={id} value={id}>{id}</option>)}
+          {vehicleIds.map((id) => <option key={id} value={id}>{id}</option>)}
         </select>
       </div>
       {error && <p className="text-xs text-accent-red">{error}</p>}
