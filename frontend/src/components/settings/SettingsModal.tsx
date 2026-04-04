@@ -9,11 +9,13 @@ export default function SettingsModal() {
     settingAutoRotateBrain,
     settingVizMode,
     settingShowTrails,
+    settingShowNearby,
     setSettingMaxConstraintDistance,
     setSettingSpeedDegradationPct,
     setSettingAutoRotateBrain,
     setSettingVizMode,
     setSettingShowTrails,
+    setSettingShowNearby,
   } = useUIStore()
 
   if (!settingsOpen) return null
@@ -140,6 +142,27 @@ export default function SettingsModal() {
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
                   settingShowTrails ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Show nearby constraints */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-300">Show Nearby Constraints</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">Expand "nearby" section by default in vehicle profile.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSettingShowNearby(!settingShowNearby)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
+                settingShowNearby ? 'bg-accent-blue/80 border-accent-blue' : 'bg-surface-2 border-surface-border'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  settingShowNearby ? 'translate-x-6' : 'translate-x-1'
                 }`}
               />
             </button>

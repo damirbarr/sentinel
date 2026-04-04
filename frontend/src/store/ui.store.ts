@@ -19,6 +19,7 @@ interface UIState {
   settingAutoRotateBrain: boolean
   settingVizMode: 'brain' | 'atom'
   settingShowTrails: boolean
+  settingShowNearby: boolean
   followingVehicleId: string | null
   setSelectedVehicle: (id: string | null) => void
   setTimelineOpen: (open: boolean) => void
@@ -36,6 +37,7 @@ interface UIState {
   setSettingAutoRotateBrain: (v: boolean) => void
   setSettingVizMode: (v: 'brain' | 'atom') => void
   setSettingShowTrails: (v: boolean) => void
+  setSettingShowNearby: (v: boolean) => void
   setFollowingVehicle: (id: string | null) => void
 }
 
@@ -58,6 +60,7 @@ export const useUIStore = create<UIState>()(
       settingAutoRotateBrain: true,
       settingVizMode: 'brain' as 'brain' | 'atom',
       settingShowTrails: true,
+      settingShowNearby: false,
       followingVehicleId: null,
       setSelectedVehicle: (id) => set({ selectedVehicleId: id }),
       setTimelineOpen: (open) => set({ timelineOpen: open }),
@@ -75,6 +78,7 @@ export const useUIStore = create<UIState>()(
       setSettingAutoRotateBrain: (v) => set({ settingAutoRotateBrain: v }),
       setSettingVizMode: (v) => set({ settingVizMode: v }),
       setSettingShowTrails: (v) => set({ settingShowTrails: v }),
+      setSettingShowNearby: (v) => set({ settingShowNearby: v }),
       setFollowingVehicle: (id) => set({ followingVehicleId: id }),
     }),
     {
@@ -85,6 +89,7 @@ export const useUIStore = create<UIState>()(
         settingAutoRotateBrain: state.settingAutoRotateBrain,
         settingVizMode: state.settingVizMode,
         settingShowTrails: state.settingShowTrails,
+        settingShowNearby: state.settingShowNearby,
       }),
     }
   )

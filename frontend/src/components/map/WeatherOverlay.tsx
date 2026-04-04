@@ -14,8 +14,9 @@ interface SnowP   { nx: number; ny: number; speed: number; radius: number; phase
 interface FogBlob { nx: number; ny: number; blobR: number; alpha: number; driftNx: number; driftNy: number; driftSpeed: number }
 interface IceP    { nx: number; ny: number; phase: number; r: number }
 interface WindP   { nx: number; ny: number; speed: number; len: number; phase: number }
+interface VisP    { nx: number; ny: number; phase: number; r: number }
 
-interface ZonePs { rain: RainP[]; snow: SnowP[]; fog: FogBlob[]; ice: IceP[]; wind: WindP[] }
+interface ZonePs { rain: RainP[]; snow: SnowP[]; fog: FogBlob[]; ice: IceP[]; wind: WindP[]; vis: VisP[] }
 
 // ─── Init helpers ─────────────────────────────────────────────────────────────
 
@@ -26,12 +27,16 @@ function inCircle(spread = 1) {
 }
 
 function initZonePs(condition: string): ZonePs {
-  const ps: ZonePs = { rain: [], snow: [], fog: [], ice: [], wind: [] }
+  const ps: ZonePs = { rain: [], snow: [], fog: [], ice: [], wind: [], vis: [] }
   switch (condition) {
     case 'HEAVY_RAIN':
-      for (let i = 0; i < 200; i++) {
-        const { nx } = inCircle()
-        ps.rain.push({ nx, ny: Math.random() * 2 - 1, speed: 0.024 + Math.random() * 0.018, len: 0.06 + Math.random() * 0.04 })
+      // 70% enter from top, 30% enter from left to cover bottom-left
+      for (let i = 0; i < 220; i++) {
+        if (i < 66) {
+          ps.rain.push({ nx: -1.1 - Math.random() * 0.15, ny: (Math.random() * 2 - 1) * 0.9, speed: 0.024 + Math.random() * 0.018, len: 0.06 + Math.random() * 0.04 })
+        } else {
+          ps.rain.push({ nx: (Math.random() * 2 - 1) * 0.9, ny: -1.1 - Math.random() * 0.15, speed: 0.024 + Math.random() * 0.018, len: 0.06 + Math.random() * 0.04 })
+        }
       }
       break
     case 'SNOW':
@@ -40,7 +45,7 @@ function initZonePs(condition: string): ZonePs {
         ps.snow.push({ ...p, speed: 0.004 + Math.random() * 0.005, radius: 1.5 + Math.random() * 2.5, phase: Math.random() * Math.PI * 2 })
       }
       break
-    case 'FOG': case 'LOW_VISIBILITY':
+    case 'FOG':
       for (let i = 0; i < 24; i++) {
         const p = inCircle(0.85)
         ps.fog.push({
@@ -51,6 +56,13 @@ function initZonePs(condition: string): ZonePs {
           driftNy: (Math.random() - 0.5) * 0.5,
           driftSpeed: 0.00022 + Math.random() * 0.00025,
         })
+      }
+      break
+    case 'LOW_VISIBILITY':
+      // Scattered dust/haze particles — brownish tint, denser but smaller
+      for (let i = 0; i < 180; i++) {
+        const p = inCircle()
+        ps.vis.push({ ...p, phase: Math.random() * Math.PI * 2, r: 1.0 + Math.random() * 2.0 })
       }
       break
     case 'ICE':
@@ -83,10 +95,32 @@ function drawRain(ctx: CanvasRenderingContext2D, cx: number, cy: number, rPx: nu
     ctx.stroke()
     r.ny += r.speed
     r.nx += r.speed * 0.36
-    if (r.ny > 1.15) {
-      r.ny = -1.1 - Math.random() * 0.15
-      r.nx = (Math.random() * 2 - 1) * 0.9
+    // Reset: exit bottom → re-enter from top or left (30% from left to cover bottom-left)
+    if (r.ny > 1.15 || r.nx > 1.15) {
+      if (Math.random() < 0.32) {
+        r.nx = -1.1 - Math.random() * 0.12
+        r.ny = (Math.random() * 2 - 1) * 0.92
+      } else {
+        r.ny = -1.1 - Math.random() * 0.15
+        r.nx = (Math.random() * 2 - 1) * 0.9
+      }
     }
+  }
+}
+
+function drawLowVis(ctx: CanvasRenderingContext2D, cx: number, cy: number, rPx: number, ps: VisP[], t: number) {
+  // Dark brownish-gray haze overlay
+  ctx.fillStyle = 'rgba(90, 80, 70, 0.28)'
+  ctx.beginPath()
+  ctx.arc(cx, cy, rPx, 0, 2 * Math.PI)
+  ctx.fill()
+  // Floating dust particles — warm gray/brown tones, slow shimmer
+  for (const v of ps) {
+    const alpha = 0.12 + 0.22 * Math.abs(Math.sin(t * 0.04 + v.phase))
+    ctx.fillStyle = `rgba(165, 148, 128, ${alpha})`
+    ctx.beginPath()
+    ctx.arc(cx + v.nx * rPx, cy + v.ny * rPx, v.r, 0, 2 * Math.PI)
+    ctx.fill()
   }
 }
 
@@ -232,11 +266,12 @@ export default function WeatherOverlay({ weatherZones }: { weatherZones: Weather
         ctx.clip()
 
         switch (zone.condition) {
-          case 'HEAVY_RAIN':                   drawRain(ctx, cx, cy, rPx, ps.rain); break
-          case 'SNOW':                         drawSnow(ctx, cx, cy, rPx, ps.snow, t); break
-          case 'FOG': case 'LOW_VISIBILITY':   drawFog(ctx, cx, cy, rPx, ps.fog); break
-          case 'ICE':                          drawIce(ctx, cx, cy, rPx, ps.ice, t); break
-          case 'STRONG_WIND':                  drawWind(ctx, cx, cy, rPx, ps.wind, t); break
+          case 'HEAVY_RAIN':    drawRain(ctx, cx, cy, rPx, ps.rain); break
+          case 'SNOW':          drawSnow(ctx, cx, cy, rPx, ps.snow, t); break
+          case 'FOG':           drawFog(ctx, cx, cy, rPx, ps.fog); break
+          case 'LOW_VISIBILITY':drawLowVis(ctx, cx, cy, rPx, ps.vis, t); break
+          case 'ICE':           drawIce(ctx, cx, cy, rPx, ps.ice, t); break
+          case 'STRONG_WIND':   drawWind(ctx, cx, cy, rPx, ps.wind, t); break
         }
 
         ctx.restore()
